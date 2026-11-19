@@ -11,6 +11,20 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg, #39d353, #7CFC00); border-radius: 7px; }
 #hptext { position: absolute; right: 6px; top: 0; font-size: 11px; line-height: 14px; color: #fff; font-weight: 700; }
 #ammo { font-size: 13px; font-weight: 700; margin-top: 6px; color: #ffd75e; letter-spacing: 1px; }
+#weapons { margin-top: 6px; }
+.wslot { display: inline-block; font-size: 11px; font-weight: 700; color: #bbb; background: #222; border: 1px solid #444; border-radius: 4px; padding: 2px 6px; margin-right: 5px; }
+.wslot.on { color: #111; background: #ffd75e; border-color: #ffd75e; }
+#nitro { width: 170px; height: 8px; background: #222; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+#nitrofill { height: 100%; width: 100%; background: linear-gradient(90deg, #19c3ff, #7ee7ff); border-radius: 4px; }
+#upgrades { font-size: 11px; font-weight: 700; margin-top: 6px; color: #9a8fd6; letter-spacing: 1px; }
+#radio { font-size: 13px; font-weight: 700; color: #19c3ff; margin-top: 4px; text-align: right; }
+#garage-prompt { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); background: rgba(255,46,136,0.85); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; }
+#garage-rows { margin-top: 18px; text-align: left; }
+.grow { font-size: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 16px; margin-top: 8px; min-width: 520px; }
+.gkey { display: inline-block; background: #ff2e88; border-radius: 4px; padding: 1px 8px; font-weight: 800; margin-right: 8px; }
+.gdesc { color: #bdbdbd; font-size: 14px; }
+.glvl { float: right; color: #ffd75e; font-weight: 800; margin-left: 12px; }
+.gcost { float: right; color: #7CFC00; font-weight: 800; }
 #hud-right { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.55); border-radius: 8px; padding: 8px 14px; }
 #stars { font-size: 26px; letter-spacing: 4px; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
 #stars .off { color: #555; text-shadow: none; }

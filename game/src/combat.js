@@ -1,17 +1,61 @@
-// Combat: the player's pistol (raycast from the camera), enemy fire,
-// tracers, impact bursts, screen shake and damage. Cars explode at 0 HP.
+// Combat: two weapons (pistol + SMG, switched with 1/2), raycast shots
+// from the camera, enemy fire, tracers, impact bursts, screen shake and
+// damage. Cars explode at 0 HP. Ammo reloads with Q, or automatically when
+// a mag runs dry.
 const NV_COMBAT = {
   tracers: [], parts: [], raycaster: null,
 
   init() { this.raycaster = new THREE.Raycaster(); },
 
+  weaponDef(P) {
+    const w = NV_CONFIG.weapons[P.weapon || 'pistol'] || NV_CONFIG.weapons.pistol;
+    return w;
+  },
+
+  // Ammo per weapon lives in P.ammoBy; P.ammo always mirrors the active one.
+  ensureWeapons(P) {
+    if (!P.ammoBy) {
+      P.weapon = 'pistol';
+      P.ammoBy = { pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag };
+      P.ammo = P.ammoBy.pistol;
+    }
+  },
+
+  switchWeapon(G, name) {
+    const P = G.player;
+    this.ensureWeapons(P);
+    if (!NV_CONFIG.weapons[name] || P.weapon === name) return false;
+    P.ammoBy[P.weapon] = P.ammo;
+    P.weapon = name;
+    P.ammo = P.ammoBy[name];
+    P.reloadT = 0;
+    P.shootT = 0;
+    NV_AUDIO.click();
+    return true;
+  },
+
+  startReload(G) {
+    const P = G.player;
+    this.ensureWeapons(P);
+    const w = this.weaponDef(P);
+    if (P.inCar || P.reloadT > 0 || P.ammo >= w.mag) return false;
+    P.reloadT = NV_CONFIG.player.reloadTime;
+    NV_AUDIO.reload();
+    return true;
+  },
+
   shoot(G) {
     const P = G.player;
-    if (P.inCar || P.ammo <= 0 || P.reloadT > 0 || P.shootT > 0) return;
-    P.shootT = NV_CONFIG.player.shootCooldown;
+    this.ensureWeapons(P);
+    const w = this.weaponDef(P);
+    if (P.inCar || P.reloadT > 0 || P.shootT > 0) return;
+    if (P.ammo <= 0) { this.startReload(G); return; }
+    P.shootT = w.cooldown;
     P.ammo -= 1;
-    NV_AUDIO.shot();
-    G.shake = Math.min(1, G.shake + 0.12);
+    P.ammoBy[P.weapon] = P.ammo;
+    if (P.weapon === 'smg') { NV_AUDIO.noise(0.07, 0.16, 3000); this.toneSmg(); }
+    else NV_AUDIO.shot();
+    G.shake = Math.min(1, G.shake + (P.weapon === 'smg' ? 0.06 : 0.12));
     const cam = G.camera;
     this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
     this.raycaster.far = 140;
@@ -30,9 +74,9 @@ const NV_COMBAT = {
       this.spawnBurst(G, h.point, 0xffd75e, 10, 6);
       const obj = this.findOwner(h.object);
       if (obj) {
-        if (obj.kind === 'officer') this.damageOfficer(G, obj.ref, 34);
-        else if (obj.kind === 'guard') this.damageGuard(G, obj.ref, 34);
-        else if (obj.kind === 'car') this.damageCar(G, obj.ref, 18);
+        if (obj.kind === 'officer') this.damageOfficer(G, obj.ref, w.damage);
+        else if (obj.kind === 'guard') this.damageGuard(G, obj.ref, w.damage);
+        else if (obj.kind === 'car') this.damageCar(G, obj.ref, Math.round(w.damage * 0.5));
       }
     }
     this.spawnTracer(G, from, end, 0xfff2c0);
@@ -41,6 +85,8 @@ const NV_COMBAT = {
     NV_POLICE.addWanted(G, 0); // shooting keeps the heat fresh
     G.player.lastShotT = G.time;
   },
+
+  toneSmg() { NV_AUDIO.tone(220, 0.05, 'square', 0.07, 70); },
 
   findOwner(obj) {
     let o = obj;
@@ -154,10 +200,17 @@ const NV_COMBAT = {
     }
     // Player health regen after 5 calm seconds.
     const P = G.player;
+    this.ensureWeapons(P);
     if (P.hp > 0 && P.hp < 100 && G.time - (P.lastHurtT || -99) > 5) P.hp = Math.min(100, P.hp + 6 * dt);
     if (P.reloadT > 0) {
       P.reloadT -= dt;
-      if (P.reloadT <= 0) { P.ammo = NV_CONFIG.player.magSize; }
+      if (P.reloadT <= 0) {
+        const w = this.weaponDef(P);
+        P.ammo = w.mag;
+        P.ammoBy[P.weapon] = P.ammo;
+      }
+    } else if (P.ammo <= 0 && !P.inCar && G.screen === 'playing') {
+      this.startReload(G); // dry mag reloads itself
     }
     if (P.shootT > 0) P.shootT -= dt;
   },

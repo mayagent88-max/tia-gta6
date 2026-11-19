@@ -94,4 +94,51 @@ const NV_AUDIO = {
     if (this.master) this.master.gain.value = this.muted ? 0 : 0.5;
     return this.muted;
   },
+
+  // --- Radio: three WebAudio synth stations, cycled with R. A 16-step
+  // sequencer plays a quiet bass + lead pattern per station; the main loop
+  // calls updateRadio(dt) every frame.
+  radio: {
+    station: 0, step: 0, nextT: 0,
+    stations: [
+      { name: 'NEON FM', bpm: 112, wave: 'sawtooth', bass: [55, 0, 55, 0, 65.4, 0, 55, 0, 49, 0, 55, 0, 73.4, 0, 65.4, 0], lead: [220, 0, 0, 261.6, 0, 0, 329.6, 0, 0, 0, 392, 0, 329.6, 0, 261.6, 0] },
+      { name: 'VICE 88', bpm: 100, wave: 'square', bass: [82.4, 0, 98, 0, 82.4, 0, 110, 0, 82.4, 0, 98, 0, 123.5, 0, 98, 0], lead: [0, 0, 164.8, 0, 0, 196, 0, 0, 0, 0, 164.8, 0, 0, 246.9, 0, 0] },
+      { name: 'STATIC 99', bpm: 84, wave: 'triangle', bass: [65.4, 0, 0, 0, 98, 0, 0, 0, 82.4, 0, 0, 0, 110, 0, 98, 0], lead: [130.8, 0, 164.8, 0, 196, 0, 164.8, 0, 130.8, 0, 196, 0, 246.9, 0, 220, 0] },
+    ],
+  },
+  radioName() { return this.radio.stations[this.radio.station].name; },
+  cycleRadio() {
+    this.radio.station = (this.radio.station + 1) % this.radio.stations.length;
+    this.radio.step = 0;
+    this.radio.nextT = 0;
+    return this.radioName();
+  },
+  updateRadio() {
+    if (!this.ctx || this.muted || this.ctx.state !== 'running') return;
+    const st = this.radio.stations[this.radio.station];
+    const stepDur = 60 / st.bpm / 4;
+    const now = this.ctx.currentTime;
+    if (this.radio.nextT < now - 0.2) this.radio.nextT = now + 0.05;
+    let guard = 0;
+    while (this.radio.nextT < now + 0.12 && guard < 8) {
+      guard += 1;
+      const i = this.radio.step % 16;
+      const b = st.bass[i], l = st.lead[i];
+      if (b) this.toneAt(b, stepDur * 0.9, st.wave, 0.045, this.radio.nextT);
+      if (l) this.toneAt(l, stepDur * 0.9, 'sine', 0.03, this.radio.nextT);
+      this.radio.step += 1;
+      this.radio.nextT += stepDur;
+    }
+  },
+  toneAt(freq, dur, type, vol, when) {
+    if (!this.ctx || this.muted) return;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, when);
+    g.gain.setValueAtTime(vol || 0.05, when);
+    g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(when); o.stop(when + dur + 0.02);
+  },
 };

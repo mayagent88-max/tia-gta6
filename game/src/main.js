@@ -1,7 +1,16 @@
 // Boot and the one loop: the 3D city renders behind the title screen, the
-// player drives and shoots in third person, and the three jobs run through
+// player drives and shoots in third person, and the eight jobs run through
 // the mission state machine. Debug hooks live on window.NV / window.__game.
 const NV_MAIN = {
+  // Garage tuning applies to whichever car Jax drives: engine raises the
+  // top speed, armor raises the car's HP cap, nitro fills its boost meter.
+  applyUpgrades(G, car) {
+    const u = G.upgrades || { engine: 0, armor: 0, nitro: 0 };
+    car.upg = u;
+    car.hpMax = 100 + 50 * u.armor;
+    if (car.hp === undefined || car.hp > car.hpMax) car.hp = car.hpMax;
+    if (car.nitro === undefined) car.nitro = 100;
+  },
   startGame(G) {
     NV_AUDIO.ensure(); NV_AUDIO.resume();
     G.screen = 'playing';
@@ -11,6 +20,7 @@ const NV_MAIN = {
   enterCar(G, car) {
     const P = G.player;
     P.inCar = true; P.car = car; car.driver = 'player';
+    this.applyUpgrades(G, car);
     P.mesh.group.visible = false;
     NV_AUDIO.setEngine(0.1);
   },
@@ -45,13 +55,17 @@ const NV_MAIN = {
   },
   resetRun(G) {
     const P = G.player;
-    P.hp = 100; P.ammo = NV_CONFIG.player.magSize; P.reloadT = 0;
+    P.hp = 100; P.weapon = 'pistol'; P.ammoBy = { pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag };
+    P.ammo = P.ammoBy.pistol; P.reloadT = 0;
     P.pos.copy(G.world.locations.spawn);
     P.yaw = -Math.PI / 2; P.camYaw = -Math.PI / 2;
     if (P.inCar) { P.car.driver = null; P.inCar = false; P.car = null; }
     P.mesh.group.visible = true;
     G.wanted = 0;
+    G.garageOpen = false;
+    NV_HUD.hideGarage(G);
     NV_MISSIONS.clearField(G);
+    NV_POLICE.clearRoadblocks(G);
     G.mission = null;
     G.world.hideBeacon();
     G.world.setSunset(false);
@@ -92,6 +106,8 @@ function buildGame() {
   };
   const save = NV_SAVE.load();
   G.cash = save.cash; G.missionsDone = save.missionsDone;
+  G.upgrades = save.upgrades || { engine: 0, armor: 0, nitro: 0 };
+  G.garageOpen = false;
 
   // Player: Jax, orange shirt, dark pants.
   const person = NV_ENTITIES.makePerson(0xff5a3c, 0x222233);
@@ -104,6 +120,7 @@ function buildGame() {
     lastHurtT: -99, lastShotT: -99, speed: 0,
   };
   G.player.mesh.group.userData.owner = { kind: 'player', ref: G.player };
+  NV_COMBAT.ensureWeapons(G.player);
 
   NV_TRAFFIC.init(scene, rng, NV_WORLD);
   G.cars.push(...NV_TRAFFIC.trafficCars, ...NV_TRAFFIC.parkedCars);
@@ -120,7 +137,11 @@ function buildGame() {
   document.getElementById('resume-btn').addEventListener('click', () => { G.screen = 'playing'; NV_HUD.showScreen(G, 'playing'); });
   document.getElementById('wasted-btn').addEventListener('click', () => NV_MAIN.resetRun(G));
   document.getElementById('busted-btn').addEventListener('click', () => NV_MAIN.resetRun(G));
-  document.getElementById('ending-btn').addEventListener('click', () => { NV_SAVE.clear(); NV_MAIN.resetRun(G); G.cash = 0; G.missionsDone = 0; });
+  document.getElementById('ending-btn').addEventListener('click', () => {
+    NV_SAVE.clear();
+    G.cash = 0; G.missionsDone = 0; G.upgrades = { engine: 0, armor: 0, nitro: 0 };
+    NV_MAIN.resetRun(G);
+  });
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -148,7 +169,11 @@ function buildGame() {
     if (G.screen === 'title' && NV_INPUT.consume('enter')) NV_MAIN.startGame(G);
     else if (G.screen === 'paused' && NV_INPUT.consume('p')) { G.screen = 'playing'; NV_HUD.showScreen(G, 'playing'); }
     else if ((G.screen === 'wasted' || G.screen === 'busted') && NV_INPUT.consume('enter')) NV_MAIN.resetRun(G);
-    else if (G.screen === 'ending' && NV_INPUT.consume('enter')) { NV_SAVE.clear(); NV_MAIN.resetRun(G); G.cash = 0; G.missionsDone = 0; }
+    else if (G.screen === 'ending' && NV_INPUT.consume('enter')) {
+      NV_SAVE.clear();
+      G.cash = 0; G.missionsDone = 0; G.upgrades = { engine: 0, armor: 0, nitro: 0 };
+      NV_MAIN.resetRun(G);
+    }
     if (G.screen === 'playing') updatePlaying(G, dt);
     else if (G.screen === 'title') {
       // Slow orbit around Neon Plaza behind the title screen.
@@ -161,6 +186,7 @@ function buildGame() {
     updateCamera(G, dt);
     NV_WORLD.update(dt);
     NV_HUD.update(G, dt);
+    NV_AUDIO.updateRadio();
     renderer.render(scene, camera);
     NV_INPUT.endFrame();
   }
@@ -175,18 +201,27 @@ function updatePlaying(G, dt) {
   P.camYaw -= I.mouseDX * 0.0032;
   P.camPitch = Math.max(-0.15, Math.min(0.55, P.camPitch + I.mouseDY * 0.0022));
   if (I.consume('enter')) NV_MAIN.startGame(G);
+  // Garage: buying upgrades pauses the action.
+  if (G.garageOpen) {
+    if (I.consume('1')) NV_GARAGE.buy(G, 'engine');
+    if (I.consume('2')) NV_GARAGE.buy(G, 'armor');
+    if (I.consume('3')) NV_GARAGE.buy(G, 'nitro');
+    if (I.consume('g') || I.consume('escape')) NV_GARAGE.close(G);
+    return;
+  }
+  if (I.consume('g') && NV_GARAGE.nearGarage(G)) { NV_GARAGE.open(G); return; }
   if (I.consume('p')) {
     G.screen = 'paused';
     NV_HUD.showScreen(G, 'paused');
     return;
   }
   if (I.consume('n')) NV_AUDIO.toggleMute();
+  if (I.consume('r')) NV_HUD.banner(G, 'RADIO: ' + NV_AUDIO.cycleRadio());
+  if (I.consume('1')) NV_COMBAT.switchWeapon(G, 'pistol');
+  if (I.consume('2')) NV_COMBAT.switchWeapon(G, 'smg');
+  if (I.consume('q')) NV_COMBAT.startReload(G);
   if (I.consume('m')) {
-    if (!G.mission && G.missionsDone < 3) NV_MISSIONS.startMission(G, G.missionsDone);
-  }
-  if (I.consume('r') && !P.inCar && P.ammo < NV_CONFIG.player.magSize && P.reloadT <= 0) {
-    P.reloadT = NV_CONFIG.player.reloadTime;
-    NV_AUDIO.reload();
+    if (!G.mission && G.missionsDone < 8) NV_MISSIONS.startMission(G, G.missionsDone);
   }
   if (I.consume('e')) {
     if (!NV_MISSIONS.tryInteract(G)) {

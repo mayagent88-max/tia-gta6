@@ -1,21 +1,94 @@
-// The story: three jobs for Jax and V, each a small state machine with
+// The story: eight jobs for Jax and V, each a small state machine with
 // phases, a beacon, objectives and dialog. Completing a job pays cash and
 // saves; failing one sends Jax back to the start of that job.
 const NV_MISSIONS = {
-  guards: [], v: null,
+  guards: [], v: null, courier: null, rival: null, truck: null,
 
   startMission(G, idx) {
     const def = NV_CONFIG.missions[idx];
     if (!def) return false;
     const L = G.world.locations;
-    const target = def.id === 'm1' ? L.garage : def.id === 'm2' ? L.atm : L.beachRoad;
+    let target = null;
+    if (def.id === 'm1') target = L.garage;
+    else if (def.id === 'm2') target = L.atm;
+    else if (def.id === 'm3') target = L.beachRoad;
+    else if (def.id === 'm5') target = null; // terminals set below
+    else if (def.id === 'm8') target = L.garage;
     G.mission = { def, phase: 'go', timer: 0, target };
-    G.world.setBeacon(target.x, target.z, 0xff2e88);
+    if (target) G.world.setBeacon(target.x, target.z, 0xff2e88);
+    if (def.id === 'm4') this.spawnCourier(G);
+    if (def.id === 'm5') {
+      G.mission.atms = [
+        { x: L.atm.x, z: L.atm.z },
+        { x: L.atm2.x, z: L.atm2.z },
+        { x: L.atm3.x, z: L.atm3.z },
+      ];
+      G.mission.atmIdx = 0;
+      G.mission.target = G.mission.atms[0];
+      G.world.setBeacon(G.mission.target.x, G.mission.target.z, 0x19c3ff);
+    }
+    if (def.id === 'm6') this.spawnRival(G);
+    if (def.id === 'm7') {
+      G.mission.surviveT = 60;
+      G.mission.heatT = 0;
+      G.mission.target = null;
+      NV_POLICE.addWanted(G, 4);
+    }
+    if (def.id === 'm8') this.spawnTruck(G);
     NV_HUD.banner(G, 'MISSION ' + (idx + 1) + ' — ' + def.name);
     NV_HUD.dialog(G, 'V: ' + def.brief, 6);
     NV_HUD.setObjective(G, def.brief);
     NV_AUDIO.pickup();
     return true;
+  },
+
+  spawnCourier(G) {
+    const M = G.mission;
+    const courier = NV_ENTITIES.makeCar(0xe8c832, 'courier');
+    courier.group.position.set(-1000, 0, 730);
+    courier.yaw = 0;
+    courier.group.rotation.y = 0;
+    courier.group.userData.owner = { kind: 'car', ref: courier };
+    courier.waypoints = [{ x: 1000, z: 730 }, { x: -1000, z: 730 }];
+    courier.wpIdx = 0;
+    courier.speed = 14;
+    G.scene.add(courier.group);
+    G.cars.push(courier);
+    this.courier = courier;
+    M.target = { x: -1000, z: 730 };
+    G.world.setBeacon(-1000, 730, 0xffd75e);
+    NV_HUD.setObjective(G, 'Intercept the rival courier on the beach road — get close and press E.');
+  },
+
+  spawnRival(G) {
+    const M = G.mission;
+    M.cps = [{ x: -600, z: -400 }, { x: 600, z: -400 }, { x: 600, z: 400 }, { x: -600, z: 400 }];
+    M.cpIdx = 0;
+    const rival = NV_ENTITIES.makeCar(0x7a4ad6, 'rival');
+    rival.group.position.set(-600, 0, -380);
+    rival.yaw = 0;
+    rival.group.rotation.y = 0;
+    rival.group.userData.owner = { kind: 'car', ref: rival };
+    rival.cpIdx = 0;
+    G.scene.add(rival.group);
+    G.cars.push(rival);
+    this.rival = rival;
+    M.target = M.cps[0];
+    G.world.setBeacon(M.cps[0].x, M.cps[0].z, 0x7a4ad6);
+    NV_HUD.setObjective(G, 'Race the rival crew: checkpoint 1 of 4. Get a car!');
+  },
+
+  spawnTruck(G) {
+    const L = G.world.locations.garage;
+    const truck = NV_ENTITIES.makeCar(0xffd75e, 'payoff');
+    truck.group.position.set(L.x + 30, 0, L.z + 20);
+    truck.yaw = Math.PI / 2;
+    truck.group.rotation.y = truck.yaw;
+    truck.group.userData.owner = { kind: 'car', ref: truck };
+    G.scene.add(truck.group);
+    G.cars.push(truck);
+    this.truck = truck;
+    NV_HUD.setObjective(G, 'Get in the payoff truck at the garage.');
   },
 
   // E key: context action for the current mission phase.
@@ -59,6 +132,33 @@ const NV_MISSIONS = {
         G.world.setBeacon(L.x, L.z, 0x19c3ff);
         NV_HUD.setObjective(G, 'Protect V — hack in progress. 90 seconds.');
         NV_HUD.dialog(G, 'V: I\'m in. Keep the SEC guards off me!', 5);
+        return true;
+      }
+    }
+    if (M.def.id === 'm4' && M.phase === 'go' && this.courier && !this.courier.wrecked) {
+      const c = this.courier.group.position;
+      if (Math.hypot(pp.x - c.x, pp.z - c.z) < 10) {
+        this.courier.speed = 0;
+        M.phase = 'deliver';
+        NV_POLICE.addWanted(G, 1);
+        const P0 = G.world.locations.plaza;
+        M.target = { x: P0.x, z: P0.z };
+        G.world.setBeacon(P0.x, P0.z, 0x39d353);
+        NV_HUD.setObjective(G, 'Package grabbed! Drop it at Neon Plaza.');
+        NV_HUD.dialog(G, 'V: Got it! Now get that package to the Plaza drop.', 5);
+        return true;
+      }
+    }
+    if (M.def.id === 'm5' && M.phase === 'go' && !P.inCar) {
+      const t = M.atms[M.atmIdx];
+      if (Math.hypot(pp.x - t.x, pp.z - t.z) < 10) {
+        M.phase = 'channel';
+        M.channelT = 20;
+        NV_POLICE.addWanted(G, 1);
+        this.spawnGuards(G, 1, t.x, t.z);
+        G.world.setBeacon(t.x, t.z, 0x19c3ff);
+        NV_HUD.setObjective(G, 'Draining terminal ' + (M.atmIdx + 1) + ' of 3 — stay close! 20s.');
+        NV_HUD.dialog(G, 'V: Hold still, I\'m pulling the cash out…', 4);
         return true;
       }
     }
@@ -135,15 +235,114 @@ const NV_MISSIONS = {
         const B = G.world.locations.marina;
         if (P.inCar && Math.hypot(pp.x - B.x, pp.z - B.z) < 16) this.complete(G);
       }
+    } else if (M.def.id === 'm4') {
+      if (M.phase === 'go' && this.courier && !this.courier.wrecked) {
+        const wp = this.courier.waypoints[this.courier.wpIdx];
+        const d = NV_ENTITIES.driveToward(this.courier, wp.x, wp.z, dt, 14, G.world.colliders, G.cars);
+        if (d < 8) this.courier.wpIdx = (this.courier.wpIdx + 1) % this.courier.waypoints.length;
+        // Beacon follows the moving courier.
+        M.target = { x: this.courier.group.position.x, z: this.courier.group.position.z };
+        G.world.setBeacon(M.target.x, M.target.z, 0xffd75e);
+      } else if (M.phase === 'go' && this.courier && this.courier.wrecked) {
+        this.fail(G, 'The courier car is wrecked — the package is gone.');
+        return;
+      } else if (M.phase === 'deliver') {
+        const P0 = G.world.locations.plaza;
+        if (Math.hypot(pp.x - P0.x, pp.z - P0.z) < 14) this.complete(G);
+      }
+    } else if (M.def.id === 'm5') {
+      if (M.phase === 'channel') {
+        const t = M.atms[M.atmIdx];
+        const d = Math.hypot(pp.x - t.x, pp.z - t.z);
+        if (!P.inCar && d < 12) {
+          M.channelT -= dt;
+          NV_HUD.setObjective(G, 'Draining terminal ' + (M.atmIdx + 1) + ' of 3 — ' + Math.ceil(Math.max(0, M.channelT)) + 's left.');
+        } else {
+          NV_HUD.setObjective(G, 'Draining terminal ' + (M.atmIdx + 1) + ' of 3 — stay close to the terminal!');
+        }
+        if (M.channelT <= 0) {
+          M.atmIdx += 1;
+          if (M.atmIdx >= 3) { this.complete(G); return; }
+          M.phase = 'go';
+          const nt = M.atms[M.atmIdx];
+          M.target = nt;
+          G.world.setBeacon(nt.x, nt.z, 0x19c3ff);
+          NV_HUD.setObjective(G, 'Terminal ' + (M.atmIdx + 1) + ' of 3 — get to the next vault terminal.');
+          NV_HUD.dialog(G, 'V: One down, ' + (3 - M.atmIdx) + ' to go. Move!', 4);
+        }
+      }
+    } else if (M.def.id === 'm6') {
+      if (M.phase === 'go') {
+        const cp = M.cps[M.cpIdx];
+        if (Math.hypot(pp.x - cp.x, pp.z - cp.z) < 15) {
+          M.cpIdx += 1;
+          if (M.cpIdx >= 4) { this.complete(G); return; }
+          const nt = M.cps[M.cpIdx];
+          M.target = nt;
+          G.world.setBeacon(nt.x, nt.z, 0x7a4ad6);
+          NV_HUD.setObjective(G, 'Checkpoint ' + (M.cpIdx + 1) + ' of 4 — beat the rival there!');
+          NV_HUD.dialog(G, 'V: Checkpoint ' + M.cpIdx + ' down. Keep pushing!', 3);
+        }
+        // The rival drives the same checkpoints.
+        if (this.rival && !this.rival.wrecked) {
+          const rcp = M.cps[this.rival.cpIdx];
+          const d = NV_ENTITIES.driveToward(this.rival, rcp.x, rcp.z, dt, 30, G.world.colliders, G.cars);
+          if (d < 12) {
+            this.rival.cpIdx += 1;
+            if (this.rival.cpIdx >= 4) {
+              this.fail(G, 'The rival crew beat you to the finish.');
+              return;
+            }
+          }
+        }
+      }
+    } else if (M.def.id === 'm7') {
+      if (M.phase === 'go') {
+        // Keep the heat at four stars while surviving.
+        M.heatT += dt;
+        if (M.heatT > 6) {
+          M.heatT = 0;
+          if (G.wanted < 4) NV_POLICE.addWanted(G, 1);
+        }
+        M.surviveT -= dt;
+        NV_HUD.setObjective(G, 'Survive the heat — ' + Math.ceil(Math.max(0, M.surviveT)) + 's left. Four stars!');
+        if (M.surviveT <= 0) {
+          M.phase = 'run';
+          const H = G.world.locations.hideout;
+          M.target = { x: H.x, z: H.z };
+          G.world.setBeacon(H.x, H.z, 0x39d353);
+          NV_HUD.setObjective(G, 'You lived! Now reach the Hideout.');
+          NV_HUD.dialog(G, 'V: They lost you — get to the Hideout, now!', 5);
+        }
+      } else if (M.phase === 'run') {
+        const H = G.world.locations.hideout;
+        if (Math.hypot(pp.x - H.x, pp.z - H.z) < 13) this.complete(G);
+      }
+    } else if (M.def.id === 'm8') {
+      if (M.phase === 'go' && P.inCar && P.car && P.car.kind === 'payoff') {
+        M.phase = 'drive';
+        NV_POLICE.addWanted(G, 5);
+        const B = G.world.locations.marina;
+        M.target = { x: B.x, z: B.z };
+        G.world.setBeacon(B.x, B.z, 0xffd75e);
+        NV_HUD.setObjective(G, 'Five stars! Deliver the payoff truck to the Marina boat!');
+        NV_HUD.dialog(G, 'V: The whole city is on us. Don\'t lose the truck!', 5);
+      } else if (M.phase === 'drive') {
+        if (this.truck && this.truck.wrecked) { this.fail(G, 'The payoff truck is wrecked.'); return; }
+        const B = G.world.locations.marina;
+        if (P.inCar && Math.hypot(pp.x - B.x, pp.z - B.z) < 16) this.complete(G);
+      }
     }
   },
 
-  spawnGuards(G, n) {
+  spawnGuards(G, n, x, z) {
     const L = G.world.locations.atm;
+    const cx = (x !== undefined) ? x : L.x;
+    const cz = (z !== undefined) ? z : L.z;
     for (let i = 0; i < n; i += 1) {
       const person = NV_ENTITIES.makePerson(0x222228, 0x181820);
       const a = G.rng.range(0, Math.PI * 2);
-      person.group.position.set(L.x + Math.cos(a) * 45, 0, L.z + Math.sin(a) * 45);
+      person.group.position.set(cx + Math.cos(a) * 45, 0, cz + Math.sin(a) * 45);
       person.group.userData.owner = { kind: 'guard', ref: null };
       G.scene.add(person.group);
       const gd = { mesh: person, pos: person.group.position, yaw: 0, hp: 50, shootT: 1, phase: 0 };
@@ -164,8 +363,8 @@ const NV_MISSIONS = {
     const doneId = M.def.id;
     G.mission = null;
     G.world.hideBeacon();
-    if (doneId === 'm3') { NV_MAIN.ending(G); return; }
-    NV_HUD.setObjective(G, G.missionsDone < 3 ? 'Press M for the next mission.' : 'All jobs done — free roam Aura City.');
+    if (doneId === 'm8') { NV_MAIN.ending(G); return; }
+    NV_HUD.setObjective(G, G.missionsDone < 8 ? 'Press M for the next mission.' : 'All jobs done — free roam Aura City.');
   },
 
   fail(G, reason) {
@@ -183,5 +382,23 @@ const NV_MISSIONS = {
     for (const gd of this.guards) G.scene.remove(gd.mesh.group);
     this.guards = [];
     if (this.v) { G.scene.remove(this.v.mesh.group); this.v = null; }
+    if (this.courier) {
+      G.scene.remove(this.courier.group);
+      const i = G.cars.indexOf(this.courier);
+      if (i >= 0) G.cars.splice(i, 1);
+      this.courier = null;
+    }
+    if (this.rival) {
+      G.scene.remove(this.rival.group);
+      const i = G.cars.indexOf(this.rival);
+      if (i >= 0) G.cars.splice(i, 1);
+      this.rival = null;
+    }
+    if (this.truck) {
+      G.scene.remove(this.truck.group);
+      const i = G.cars.indexOf(this.truck);
+      if (i >= 0) G.cars.splice(i, 1);
+      this.truck = null;
+    }
   },
 };

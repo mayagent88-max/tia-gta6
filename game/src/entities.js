@@ -118,9 +118,12 @@ const NV_ENTITIES = {
   },
 
   // Arcade driving: accel/brake/steer with drift, 2 sub-steps, wall and
-  // car collision. Returns the distance driven this frame.
+  // car collision. Returns the distance driven this frame. Garage tuning
+  // (car.upg) raises the top speed; Shift fires the nitro boost when owned.
   updateCar(car, input, dt, colliders, others) {
     const C = NV_CONFIG.car;
+    const upg = car.upg || { engine: 0, armor: 0, nitro: 0 };
+    const topSpeed = C.maxSpeed * (1 + 0.08 * upg.engine);
     const handbrake = !!input.keys[' '];
     const grip = handbrake ? C.driftGrip : C.grip;
     const targetSteer = (input.keys.a || input.keys.arrowleft ? 1 : 0) - (input.keys.d || input.keys.arrowright ? 1 : 0);
@@ -134,9 +137,19 @@ const NV_ENTITIES = {
       if (accelIn > 0) car.speed += C.accel * h;
       else if (accelIn < 0) car.speed -= (car.speed > 0.5 ? C.brake : C.accel * 0.7) * h;
       else car.speed -= car.speed * 1.2 * h;
-      car.speed = Math.max(-C.reverseSpeed, Math.min(C.maxSpeed, car.speed));
+      // Nitro: hold Shift while driving with a charged meter.
+      let cap = topSpeed;
+      if (upg.nitro > 0 && input.keys.shift && car.nitro > 0 && accelIn > 0) {
+        cap = topSpeed * 1.45;
+        car.nitro = Math.max(0, car.nitro - 34 * h);
+        car.boosting = true;
+      } else {
+        car.boosting = false;
+        car.nitro = Math.min(100, (car.nitro || 0) + 9 * h);
+      }
+      car.speed = Math.max(-C.reverseSpeed, Math.min(cap, car.speed));
       const spd = Math.abs(car.speed);
-      const turn = car.steer * (spd / C.maxSpeed) * (car.speed >= 0 ? 1 : -1) * (spd > 0.5 ? 1 : 0);
+      const turn = car.steer * (spd / topSpeed) * (car.speed >= 0 ? 1 : -1) * (spd > 0.5 ? 1 : 0);
       car.yaw += turn * (grip / C.grip) * 2.2 * h * (spd / 10 + 0.4);
       const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
       const oldX = car.group.position.x, oldZ = car.group.position.z;
@@ -144,7 +157,8 @@ const NV_ENTITIES = {
       const blocked = NV_PHYSICS.move(car.group.position, C.radius, nx - oldX, nz - oldZ, colliders);
       if (blocked) car.speed *= 0.55;
       driven += Math.hypot(car.group.position.x - oldX, car.group.position.z - oldZ);
-      // Car vs car push-apart.
+      // Car vs car push-apart. A heavy roadblock car does not move — the
+      // player bounces off it and loses speed instead.
       for (const o of others) {
         if (o === car || o.wrecked) continue;
         const push = NV_PHYSICS.circlePush(
@@ -152,9 +166,17 @@ const NV_ENTITIES = {
           o.group.position.x, o.group.position.z, C.radius
         );
         if (push) {
-          car.group.position.x -= push.x; car.group.position.z -= push.z;
-          o.group.position.x += push.x; o.group.position.z += push.z;
-          car.speed *= 0.9; o.speed *= 0.9;
+          if (o.heavy) {
+            // A roadblock cruiser barely budges: ramming shoves it a little
+            // and costs the player speed — keep hitting it to force through.
+            car.group.position.x -= push.x * 1.75; car.group.position.z -= push.z * 1.75;
+            o.group.position.x += push.x * 0.25; o.group.position.z += push.z * 0.25;
+            car.speed *= 0.6;
+          } else {
+            car.group.position.x -= push.x; car.group.position.z -= push.z;
+            o.group.position.x += push.x; o.group.position.z += push.z;
+            car.speed *= 0.9; o.speed *= 0.9;
+          }
         }
       }
       NV_PHYSICS.clampWorld(car.group.position, 8);

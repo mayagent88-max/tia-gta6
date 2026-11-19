@@ -5,11 +5,15 @@
 // screenshots/ from beside this file to /output and writes /output/dossier.json, the summary the
 // judge reads, with the vendored make.fun library. The game in game/ is NEON VELOCITY:
 // AURA CITY, a full-3D open-world crime game written for this entry (three.js, third-person
-// camera, procedural neon coastal city, custom lightweight physics): Jax and V pull three
-// heists across the city — steal the AURA GT prototype, defend V's ATM hack, then a sunset
-// beach-road escape to the Marina — with traffic, pedestrians, a wanted level, police cruisers
-// and a news helicopter with a searchlight, combat, a HUD with a minimap, a start screen and
-// a localStorage save. Put your 3 or 4 PNG or JPEG screenshots in screenshots/ (the first
+// camera, procedural neon coastal city, custom lightweight physics): Jax and V pull eight
+// jobs across the city — steal the AURA GT prototype, defend V's ATM hack, a sunset
+// beach-road escape to the Marina, a courier intercept, a three-terminal vault drain, a
+// rival-crew checkpoint race, a four-star helicopter escape and the final syndicate payoff
+// — with traffic, pedestrians, a wanted level, police cruisers, roadblocks and a news
+// helicopter with a searchlight, a garage where mission cash buys engine/armor/nitro
+// upgrades, a three-station synth radio, two weapons with a HUD slot bar, combat, a HUD
+// with a live minimap (roads, buildings, police, mission marker), a start screen and a
+// localStorage save. Put your 3 or 4 PNG or JPEG screenshots in screenshots/ (the first
 // by name is the cover) and run it.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.

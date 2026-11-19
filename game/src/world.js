@@ -41,7 +41,11 @@ const NV_WORLD = {
     g.fillStyle = '#1c1c22';
     for (let x = -1000; x <= 1000; x += W.roadGap) g.fillRect(px(x - 9), 0, px(x + 9) - px(x - 9), pz(W.beachZ));
     for (let z = -800; z <= 800; z += W.roadGap) g.fillRect(0, pz(z - 9), gw, pz(z + 9) - pz(z - 9));
-    g.fillStyle = '#d9b380'; g.fillRect(0, pz(700), gw, pz(760) - pz(700)); // beach road
+    g.fillStyle = '#1c1c22'; g.fillRect(0, pz(700), gw, pz(760) - pz(700)); // beach road (asphalt)
+    g.fillStyle = '#3a3a44'; g.fillRect(0, pz(694), gw, pz(700) - pz(694)); // beach road sidewalk
+    g.strokeStyle = '#e8c832'; g.lineWidth = 3; g.setLineDash([22, 18]);
+    g.beginPath(); g.moveTo(0, pz(730)); g.lineTo(gw, pz(730)); g.stroke();
+    g.setLineDash([]);
     g.strokeStyle = '#e8c832'; g.lineWidth = 3; g.setLineDash([22, 18]);
     for (let x = -1000; x <= 1000; x += W.roadGap) {
       g.beginPath(); g.moveTo(px(x), 0); g.lineTo(px(x), pz(W.beachZ)); g.stroke();
@@ -208,14 +212,17 @@ const NV_WORLD = {
       this.boats.push(boat);
     });
 
-    // --- Landmarks: garage, ATM kiosk, hideout ring, sun disc.
+    // --- Landmarks: garage, ATM kiosks, hideout ring, sun disc.
     this.locations = {
       spawn: new THREE.Vector3(0, 0, 40),
       garage: new THREE.Vector3(-700, 0, -500),
       hideout: new THREE.Vector3(-900, 0, 500),
       atm: new THREE.Vector3(100, 0, -100),
+      atm2: new THREE.Vector3(-670, 0, -470),
+      atm3: new THREE.Vector3(1040, 0, 420),
       marina: new THREE.Vector3(1100, 0, 400),
       beachRoad: new THREE.Vector3(0, 0, 730),
+      plaza: new THREE.Vector3(0, 0, 0),
     };
     const garage = new THREE.Mesh(new THREE.BoxGeometry(26, 9, 16), new THREE.MeshStandardMaterial({ color: 0x33333d, roughness: 0.7 }));
     garage.position.set(-700, 4.5, -500);
@@ -230,13 +237,20 @@ const NV_WORLD = {
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(22, 4), new THREE.MeshBasicMaterial({ map: signTex }));
     sign.position.set(-700, 8, -491.5);
     scene.add(sign);
-    const atm = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 2.5), new THREE.MeshStandardMaterial({ color: 0x2a2a33, roughness: 0.6 }));
-    atm.position.set(100, 2.5, -100);
-    scene.add(atm);
-    this.colliders.push({ minX: 98, maxX: 102, minZ: -101.5, maxZ: -98.5 });
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.8), new THREE.MeshBasicMaterial({ color: 0x19c3ff }));
-    screen.position.set(100, 3.4, -98.6);
-    scene.add(screen);
+    // Three vault-terminal ATM kiosks (m5 drains all three in order).
+    const addAtm = (x, z, yaw) => {
+      const atm = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 2.5), new THREE.MeshStandardMaterial({ color: 0x2a2a33, roughness: 0.6 }));
+      atm.position.set(x, 2.5, z);
+      atm.rotation.y = yaw || 0;
+      scene.add(atm);
+      this.colliders.push({ minX: x - 2, maxX: x + 2, minZ: z - 1.5, maxZ: z + 1.5 });
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.8), new THREE.MeshBasicMaterial({ color: 0x19c3ff }));
+      screen.position.set(x, 3.4, z + 1.35);
+      scene.add(screen);
+    };
+    addAtm(100, -100, 0);
+    addAtm(-670, -470, Math.PI / 2);
+    addAtm(1040, 420, -Math.PI / 2);
     const ring = new THREE.Mesh(new THREE.RingGeometry(9, 11, 32), new THREE.MeshBasicMaterial({ color: 0x39d353, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(-900, 0.1, 500);

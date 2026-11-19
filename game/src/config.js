@@ -13,12 +13,28 @@ const NV_CONFIG = {
     walkSpeed: 9, runSpeed: 15, accel: 40, radius: 0.9, hp: 100,
     magSize: 12, reloadTime: 1.1, shootCooldown: 0.16,
   },
+  // Two weapons: the pistol (hard hits, small mag) and the SMG (fast, weak).
+  weapons: {
+    pistol: { name: 'PISTOL', mag: 12, damage: 34, cooldown: 0.16 },
+    smg: { name: 'SMG', mag: 32, damage: 14, cooldown: 0.06 },
+  },
   car: {
     maxSpeed: 42, reverseSpeed: 14, accel: 26, brake: 40,
     steerMax: 0.55, grip: 6.0, driftGrip: 2.2, radius: 2.6,
   },
-  police: { maxCruisers: 4, maxOfficers: 6, heliAtWanted: 3, chaseRange: 320 },
-  traffic: { cars: 14, peds: 36, parked: 10 },
+  police: {
+    maxCruisers: 4, maxOfficers: 6, heliAtWanted: 3, chaseRange: 320,
+    maxRoadblocks: 2, roadblockCooldown: 16,
+  },
+  traffic: { cars: 20, peds: 48, parked: 14 },
+  // Garage upgrades: three levels each, bought with mission cash at the
+  // garage (press G near AURA MOTORS). Engine adds top speed, armor adds car
+  // HP, nitro adds a Shift boost with a meter that refills.
+  garage: {
+    engine: [1500, 2500, 4000],
+    armor: [1200, 2200, 3500],
+    nitro: [1800, 3000, 4500],
+  },
   missions: [
     {
       id: 'm1', name: 'FAST BREAK',
@@ -34,6 +50,31 @@ const NV_CONFIG = {
       id: 'm3', name: 'GOLDEN HOUR SCORE',
       brief: 'Sunset escape: drive the beach road to the Marina boat while the heli hunts you.',
       reward: 7500,
+    },
+    {
+      id: 'm4', name: 'COURIER INTERCEPT',
+      brief: 'A rival courier is running Syndicate cash down the beach road. Grab the package and drop it at Neon Plaza.',
+      reward: 3500,
+    },
+    {
+      id: 'm5', name: 'VAULT CHAIN',
+      brief: 'Drain three vault terminals across the city — Central ATM, garage yard, marina dock. Hold E at each one.',
+      reward: 5000,
+    },
+    {
+      id: 'm6', name: 'RIVAL RACE',
+      brief: 'A rival crew driver challenges you to a street race: four checkpoints, first one there wins. Get a car.',
+      reward: 5500,
+    },
+    {
+      id: 'm7', name: 'SKYLINE GETAWAY',
+      brief: 'Four stars and nowhere to hide. Survive 60 seconds of heat, then reach the Hideout.',
+      reward: 6500,
+    },
+    {
+      id: 'm8', name: 'THE PAYOFF',
+      brief: 'The final job: drive the payoff truck to the Marina boat under five stars. Do not lose the truck.',
+      reward: 10000,
     },
   ],
   // Palette: sun-soaked neon coast.

@@ -1,8 +1,10 @@
 // The wanted system: stars for crimes, police cruisers that chase and ram,
-// foot officers who chase and shoot, and the news helicopter with its
-// searchlight at 3+ stars. Sirens wail while any star is lit.
+// foot officers who chase and shoot, roadblocks across the player's route
+// at 3+ stars, and the news helicopter with its searchlight at 3+ stars.
+// Sirens wail while any star is lit.
 const NV_POLICE = {
   cruisers: [], officers: [], heli: null, heat: 0, lastCrimeT: -99,
+  roadblocks: [], roadblockT: 0,
 
   addWanted(G, n) {
     G.wanted = Math.max(0, Math.min(5, G.wanted + n));
@@ -61,6 +63,35 @@ const NV_POLICE = {
           if (G.player.car.hp <= 0) NV_COMBAT.explodeCar(G, G.player.car);
         } else {
           NV_COMBAT.hurtPlayer(G, 10 * dt * 2, c.group.position);
+        }
+      }
+    }
+    // Roadblocks at 3+ stars: cruisers parked across the road ahead of the
+    // player, with a tight gap to thread or ram through. The first block of
+    // a chase appears at once (no stale cooldown from an earlier chase);
+    // after one is set, the next waits out the cooldown. They despawn when
+    // the heat drops or the player has passed them.
+    if (G.wanted >= 3) {
+      this.roadblockT -= dt;
+      if (this.roadblocks.length === 0) this.roadblockT = 0;
+      if (this.roadblocks.length < NV_CONFIG.police.maxRoadblocks && this.roadblockT <= 0) {
+        this.spawnRoadblock(G);
+        this.roadblockT = NV_CONFIG.police.roadblockCooldown;
+      }
+    } else if (this.roadblocks.length) {
+      this.clearRoadblocks(G);
+      this.roadblockT = 0;
+    }
+    for (let i = this.roadblocks.length - 1; i >= 0; i -= 1) {
+      const rb = this.roadblocks[i];
+      const d = Math.hypot(rb.x - playerPos.x, rb.z - playerPos.z);
+      if (d > 220) this.removeRoadblock(G, i);
+      else {
+        // Flash the block's light bars.
+        const on = Math.floor(G.time * 6) % 2 === 0;
+        for (const c of rb.cars) {
+          if (c.lightRed) c.lightRed.emissiveIntensity = on ? 2.5 : 0.3;
+          if (c.lightBlue) c.lightBlue.emissiveIntensity = on ? 0.3 : 2.5;
         }
       }
     }
@@ -125,5 +156,50 @@ const NV_POLICE = {
         h.light.target.updateMatrixWorld();
       }
     }
+  },
+
+  // Two heavy cruisers parked across the road ahead of the player, leaving
+  // a tight gap in the middle: thread it, ram them aside, or detour.
+  spawnRoadblock(G) {
+    const P = G.player;
+    const yaw = P.inCar ? P.car.yaw : P.camYaw;
+    const fx = Math.cos(yaw), fz = -Math.sin(yaw);
+    const pp = P.inCar ? P.car.group.position : P.pos;
+    const ax = pp.x + fx * 110, az = pp.z + fz * 110;
+    let best = null, bestD = 1e9;
+    for (const p of G.world.roadPoints) {
+      const d = Math.hypot(p.x - ax, p.z - az);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    if (!best || bestD > 160) return;
+    const alongX = Math.abs(fx) >= Math.abs(fz);
+    const cars = [];
+    for (const s of [-6, 6]) {
+      const c = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      c.heavy = true;
+      c.group.position.set(alongX ? best.x : best.x + s, 0, alongX ? best.z + s : best.z);
+      c.yaw = alongX ? Math.PI / 2 : 0;
+      c.group.rotation.y = c.yaw;
+      c.group.userData.owner = { kind: 'car', ref: c };
+      G.scene.add(c.group);
+      G.cars.push(c);
+      cars.push(c);
+    }
+    this.roadblocks.push({ x: best.x, z: best.z, cars });
+    NV_HUD.dialog(G, 'V: Roadblock ahead — thread the gap, ram through, or detour!', 4);
+  },
+
+  removeRoadblock(G, i) {
+    const rb = this.roadblocks[i];
+    for (const c of rb.cars) {
+      G.scene.remove(c.group);
+      const ci = G.cars.indexOf(c);
+      if (ci >= 0) G.cars.splice(ci, 1);
+    }
+    this.roadblocks.splice(i, 1);
+  },
+
+  clearRoadblocks(G) {
+    while (this.roadblocks.length) this.removeRoadblock(G, 0);
   },
 };
