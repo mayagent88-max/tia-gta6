@@ -13,11 +13,16 @@ const NV_CONFIG = {
     walkSpeed: 9, runSpeed: 15, accel: 40, radius: 0.9, hp: 100,
     magSize: 12, reloadTime: 1.1, shootCooldown: 0.16,
   },
-  // Two weapons: the pistol (hard hits, small mag) and the SMG (fast, weak).
+  // Four weapons (r1 shows FISTS/.38/SMG/AR-9): fists are free melee,
+  // the pistol hits hard with a small mag, the SMG is fast and weak,
+  // the AR-9 is the workhorse. Keys 1-4, hold Tab for the wheel.
   weapons: {
+    fists: { name: 'FISTS', mag: 0, damage: 22, cooldown: 0.35, melee: true },
     pistol: { name: 'PISTOL', mag: 12, damage: 34, cooldown: 0.16 },
     smg: { name: 'SMG', mag: 32, damage: 14, cooldown: 0.06 },
+    ar: { name: 'AR-9', mag: 30, damage: 26, cooldown: 0.10 },
   },
+  weaponOrder: ['fists', 'pistol', 'smg', 'ar'],
   car: {
     maxSpeed: 42, reverseSpeed: 14, accel: 26, brake: 40,
     steerMax: 0.55, grip: 6.0, driftGrip: 2.2, radius: 2.6,

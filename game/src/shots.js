@@ -37,7 +37,8 @@ const NV_SHOTS = {
     };
     if (shot === 'cover') {
       // M1 escape on the beach road at sunset: hero car posed close to the
-      // camera, two cruisers tight behind it, city skyline behind.
+      // camera, two cruisers tight behind it, heli overhead, roadblock
+      // ahead, city skyline behind.
       G.world.setSunset(true);
       const proto = NV_ENTITIES.makeCar(0xff2e88, 'prototype');
       proto.group.position.set(0, 0, 745);
@@ -48,24 +49,46 @@ const NV_SHOTS = {
       G.cars.push(proto);
       NV_MAIN.enterCar(G, proto);
       proto.speed = 0;
-      NV_POLICE.addWanted(G, 2);
+      NV_POLICE.addWanted(G, 3);
       const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c1.group.position.set(-14, 0, 752); c1.yaw = -0.3; c1.group.rotation.y = -0.3;
       const c2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c2.group.position.set(-18, 0, 738); c2.yaw = -0.3; c2.group.rotation.y = -0.3;
-      [c1, c2].forEach((c) => { G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c); });
+      [c1, c2].forEach((c) => {
+        const id = NV_POLICE.nextUnit();
+        c.callsign = id.callsign; c.role = id.role;
+        G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c);
+      });
+      // Heli overhead + a roadblock ahead on the beach road. The heli
+      // flies low (orbitH) so it reads in frame from the chase camera.
+      const heli = NV_ENTITIES.makeHeli(G.scene);
+      heli.callsign = 'AIR-1'; heli.role = 'AIR UNIT'; heli.angle = 4.4; heli.orbitH = 14; heli.orbitR = 35; heli.orbitHold = true;
+      NV_POLICE.heli = heli;
+      const rb1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      rb1.group.position.set(-58, 0, 726); rb1.yaw = Math.PI / 2; rb1.group.rotation.y = rb1.yaw;
+      const rb2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      rb2.group.position.set(-58, 0, 738); rb2.yaw = Math.PI / 2; rb2.group.rotation.y = rb2.yaw;
+      [rb1, rb2].forEach((c, i) => {
+        c.heavy = true;
+        c.callsign = 'BLOCK-1' + (i === 0 ? 'A' : 'B'); c.role = 'ROADBLOCK';
+        G.scene.add(c.group); G.cars.push(c);
+      });
+      NV_POLICE.roadblocks.push({ x: -58, z: 732, cars: [rb1, rb2] });
       // Beach-road traffic and beachfront pedestrians in frame.
       this.stageCrowd(G, [
         [-46, 724, 0], [-32, 738, 0], [28, 722, Math.PI], [44, 738, Math.PI],
+        [-70, 730, 0], [60, 730, Math.PI],
       ], [
         [-52, 694], [-38, 696], [-20, 693], [8, 695], [24, 694], [38, 696], [52, 693], [-8, 697],
+        [-64, 700], [70, 700],
       ]);
       G.world.setBeacon(-900, 500, 0x39d353); // Hideout: the objective, so the minimap marker points there
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
-      setCam(14, 3.8, 758, -4, 1.5, 742);
+      setCam(10, 2.6, 752, -6, 1.2, 741);
     } else if (shot === 'chase') {
       // Chase posed in profile on a city avenue: the pink prototype with
-      // two cruisers tight behind it, streetlights and towers behind.
+      // two cruisers tight behind it, heli overhead, a roadblock ahead,
+      // streetlights and towers behind.
       const proto = NV_ENTITIES.makeCar(0xff2e88, 'prototype');
       proto.group.position.set(-100, 0, 0);
       proto.yaw = 0;
@@ -74,27 +97,57 @@ const NV_SHOTS = {
       G.cars.push(proto);
       NV_MAIN.enterCar(G, proto);
       proto.speed = 0;
-      NV_POLICE.addWanted(G, 2);
+      NV_POLICE.addWanted(G, 3);
       G.player.camYaw = 0;
       const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c1.group.position.set(-113, 0, 5); c1.yaw = 0; c1.group.rotation.y = 0;
       const c2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c2.group.position.set(-117, 0, -5); c2.yaw = 0; c2.group.rotation.y = 0;
-      [c1, c2].forEach((c) => { G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c); });
+      [c1, c2].forEach((c) => {
+        const id = NV_POLICE.nextUnit();
+        c.callsign = id.callsign; c.role = id.role;
+        G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c);
+      });
+      // Heli overhead + a roadblock ahead on the avenue.
+      const heli = NV_ENTITIES.makeHeli(G.scene);
+      heli.callsign = 'AIR-1'; heli.role = 'AIR UNIT'; heli.angle = Math.PI; heli.orbitH = 26; heli.orbitHold = true;
+      NV_POLICE.heli = heli;
+      const rb1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      rb1.group.position.set(-150, 0, 4); rb1.yaw = Math.PI / 2; rb1.group.rotation.y = rb1.yaw;
+      const rb2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      rb2.group.position.set(-150, 0, -4); rb2.yaw = Math.PI / 2; rb2.group.rotation.y = rb2.yaw;
+      [rb1, rb2].forEach((c, i) => {
+        c.heavy = true;
+        c.callsign = 'BLOCK-1' + (i === 0 ? 'A' : 'B'); c.role = 'ROADBLOCK';
+        G.scene.add(c.group); G.cars.push(c);
+      });
+      NV_POLICE.roadblocks.push({ x: -150, z: 0, cars: [rb1, rb2] });
       // Avenue traffic and sidewalk pedestrians in frame.
       this.stageCrowd(G, [
         [-64, -4, Math.PI], [-48, 5, 0], [-142, -6, Math.PI], [-128, 6, 0],
+        [-80, -5, Math.PI], [-170, 5, 0], [-120, 6, Math.PI], [-140, 6, 0],
       ], [
         [-70, 14], [-90, -14], [-110, 14], [-130, -14], [-60, -14], [-150, 14],
+        [-100, -14], [-140, 14],
       ]);
+      // Fill the near-side grass between the camera and the avenue.
+      G.world.addPlanter(-95, 20); G.world.addPlanter(-115, 22); G.world.addBench(-70, 18, Math.PI / 2);
       G.world.setBeacon(-900, 500, 0x39d353);
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
-      setCam(-76, 5, 20, -108, 1.5, 0);
+      setCam(-84, 4, 14, -108, 1.5, 0);
     } else if (shot === 'city') {
-      // Cinematic high view over the city toward the beach at sunset.
+      // Cinematic view over the city toward the beach at sunset, close
+      // enough that the towers and avenues read past the fog, with
+      // traffic on the avenues and crowds in the plaza below.
       G.world.setSunset(true);
       NV_HUD.setObjective(G, 'Press M to start the first mission.');
-      setCam(100, 170, 520, -40, 0, -150);
+      this.stageCrowd(G, [
+        [-200, 0, Math.PI / 2], [0, -200, 0], [200, 200, -Math.PI / 2], [-400, 200, 0],
+        [0, 400, Math.PI], [400, -200, Math.PI / 2], [-200, -400, 0], [200, 0, Math.PI],
+      ], [
+        [-30, 20], [30, -20], [-10, -40], [50, 30], [-60, -10], [20, 50],
+      ]);
+      setCam(60, 90, 300, -20, 0, -100);
     } else if (shot === 'mission') {
       // M9 Neon Heist at four stars: the gold car is ours, guards close
       // in, the weapon wheel is open — respect rank, crew and standing
@@ -115,19 +168,42 @@ const NV_SHOTS = {
       NV_MAIN.enterCar(G, gold);
       G.mission.phase = 'escape';
       NV_POLICE.addWanted(G, 4);
+      // The open weapon wheel pauses updatePlaying, so the police loop
+      // never runs for this shot: place the chase units by hand so the
+      // KPD dispatch panel has live rows and the heli reads in frame.
+      const mc = [[40, 40], [110, 30], [30, 110]];
+      mc.forEach(([x, z], i) => {
+        const c = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+        c.group.position.set(x, 0, z); c.yaw = Math.PI / 2; c.group.rotation.y = c.yaw;
+        const id = NV_POLICE.nextUnit();
+        c.callsign = id.callsign; c.role = id.role;
+        G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c);
+      });
+      const mheli = NV_ENTITIES.makeHeli(G.scene);
+      mheli.callsign = 'AIR-1'; mheli.role = 'AIR UNIT';
+      mheli.group.position.set(20, 26, 20);
+      NV_POLICE.heli = mheli;
       const H = G.world.locations.hideout;
       G.world.setBeacon(H.x, H.z, 0x39d353);
       NV_HUD.setObjective(G, 'Four stars! Lose the heat at the Hideout.');
       NV_MISSIONS.spawnGuards(G, 2, 60, 60);
-      this.stageCrowd(G, [[60, 60, Math.PI / 2], [100, 100, -Math.PI / 2]], [[64, 64], [96, 64], [64, 96]]);
+      this.stageCrowd(G, [[60, 60, Math.PI / 2], [100, 100, -Math.PI / 2]], [[64, 64], [96, 64], [64, 96], [40, 80], [110, 50]]);
       // Hold the weapon wheel open for the shot (the loop would close it
       // when Tab is not held — G.shotWheel keeps it up). The camera sits
       // close to the gold car and aims right of it, so the car fills the
-      // left third clear of the centred wheel.
+      // left third clear of the centred wheel. AR-9 selected to show the
+      // four-weapon wheel; V's dialog (with her portrait) stays on screen
+      // and the KPD dispatch panel lists the chase at four stars.
+      // Props around the gold car so the plaza reads as a market, not
+      // an empty pad, plus two pedestrians caught in the heist.
+      G.world.addMarketStall(68, 62, Math.PI / 4);
+      G.world.addPlanter(95, 60);
+      this.stageCrowd(G, [], [[72, 70], [90, 58]]);
       G.shotWheel = true;
       NV_COMBAT.openWheel(G);
-      NV_COMBAT.wheelSelect(G, 'smg');
-      setCam(89, 3.2, 89, 84, 1.5, 73);
+      NV_COMBAT.wheelSelect(G, 'ar');
+      NV_HUD.dialog(G, 'V: The gold is ours — now disappear!', 6);
+      setCam(86, 2.2, 86, 79, 1.2, 72);
     }
     setTimeout(() => { window.__shotReady = true; }, 2200);
     return true;

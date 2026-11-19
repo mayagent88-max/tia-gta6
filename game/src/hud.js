@@ -1,10 +1,56 @@
 // The HUD: cash, health, weapons + ammo, wanted stars, radio station,
-// respect + district standing + crew, the mission objective, dialog,
-// banners, the garage prompt, the weapon wheel and the live minimap.
+// respect + district standing + crew, the mission objective, dialog
+// (with a speaker portrait), the KPD dispatch panel, banners, the
+// garage prompt, the weapon wheel and the live minimap.
 // Screens (title/pause/wasted/busted/ending) are plain overlays toggled
 // from here.
 const NV_HUD = {
   els: {}, dialogT: 0, bannerT: 0,
+
+  // Character portraits: simple canvas faces, drawn in code (no images).
+  portraits: {
+    v: { skin: '#e8b88a', hair: '#19c3ff', name: 'V', role: 'HACKER' },
+    lio: { skin: '#c98d5a', hair: '#ff7a2e', name: 'LIO', role: 'MECHANIC' },
+    mira: { skin: '#e8b88a', hair: '#b06ae8', name: 'MIRA', role: 'DRIVER' },
+    kiki: { skin: '#d9a066', hair: '#39d353', name: 'KIKI', role: 'LOOKOUT' },
+    jax: { skin: '#e8b88a', hair: '#222233', name: 'JAX', role: 'DRIVER' },
+  },
+  drawPortrait(key) {
+    const c = this.els.face;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const p = this.portraits[key] || this.portraits.jax;
+    ctx.fillStyle = '#1a1030'; ctx.fillRect(0, 0, 64, 64);
+    // Shoulders / shirt.
+    ctx.fillStyle = key === 'v' ? '#19c3ff' : key === 'jax' ? '#ff5a3c' : '#33334a';
+    ctx.fillRect(8, 50, 48, 14);
+    // Face.
+    ctx.fillStyle = p.skin;
+    ctx.beginPath(); ctx.roundRect(14, 12, 36, 40, 8); ctx.fill();
+    // Hair.
+    ctx.fillStyle = p.hair;
+    if (key === 'mira') {
+      ctx.fillRect(10, 8, 44, 16); ctx.fillRect(10, 8, 8, 34); ctx.fillRect(46, 8, 8, 34);
+    } else if (key === 'lio') {
+      ctx.fillRect(12, 8, 40, 10);
+      ctx.fillStyle = '#c98d5a'; ctx.fillRect(18, 44, 28, 8); // beard
+    } else {
+      ctx.fillRect(12, 8, 40, 12);
+    }
+    // Eyes + mouth.
+    ctx.fillStyle = '#111';
+    ctx.fillRect(22, 30, 5, 6); ctx.fillRect(37, 30, 5, 6);
+    ctx.fillStyle = '#7a3a3a'; ctx.fillRect(27, 44, 10, 2);
+    // Accessories: V's headset, Kiki's goggles.
+    if (key === 'v') {
+      ctx.fillStyle = '#19c3ff';
+      ctx.fillRect(12, 26, 4, 12); ctx.fillRect(48, 26, 4, 12); ctx.fillRect(12, 26, 40, 3);
+    }
+    if (key === 'kiki') {
+      ctx.strokeStyle = '#39d353'; ctx.lineWidth = 2;
+      ctx.strokeRect(19, 27, 11, 9); ctx.strokeRect(34, 27, 11, 9);
+    }
+  },
 
   init() {
     const $ = (id) => document.getElementById(id);
@@ -14,7 +60,9 @@ const NV_HUD = {
       upgrades: $('upgrades'), radio: $('radio'),
       respect: $('respect'), district: $('district'),
       stars: $('stars'), objective: $('objective'),
-      dialog: $('dialog'), banner: $('banner'), crosshair: $('crosshair'),
+      dialog: $('dialog'), face: $('dialog-face'), dname: $('dialog-name'), dtext: $('dialog-text'),
+      dispatch: $('dispatch'),
+      banner: $('banner'), crosshair: $('crosshair'),
       minimap: $('minimap'),
       wheel: $('wheel'), wheelSlots: $('wheel-slots'),
       keepPrompt: $('keep-prompt'),
@@ -48,9 +96,35 @@ const NV_HUD = {
   },
 
   setObjective(G, text) { G.objective = text; this.els.objective.textContent = text; },
+  // Dialog with a speaker portrait: a "V: ..." prefix becomes V's face
+  // + name, the prefix stripped from the shown text; "NEW CREW: LIO —"
+  // shows that member. Lines with no speaker show no portrait.
   dialog(G, text, secs) {
-    this.els.dialog.textContent = text;
-    this.els.dialog.classList.remove('hidden');
+    let speaker = null, body = text;
+    const crewMatch = text.match(/^NEW CREW: ([A-Z]+) —/);
+    if (crewMatch) {
+      speaker = crewMatch[1].toLowerCase();
+      body = text;
+    } else {
+      const m = text.match(/^([A-Z]+): (.*)$/);
+      if (m && this.portraits[m[1].toLowerCase()]) {
+        speaker = m[1].toLowerCase();
+        body = m[2];
+      }
+    }
+    const e = this.els;
+    if (speaker && this.portraits[speaker]) {
+      this.drawPortrait(speaker);
+      e.face.classList.remove('hidden');
+      const p = this.portraits[speaker];
+      e.dname.textContent = p.name + ' — ' + p.role;
+      e.dname.classList.remove('hidden');
+    } else {
+      e.face.classList.add('hidden');
+      e.dname.classList.add('hidden');
+    }
+    e.dtext.textContent = body;
+    e.dialog.classList.remove('hidden');
     this.dialogT = secs || 4;
   },
   banner(G, text) {
@@ -81,17 +155,52 @@ const NV_HUD = {
   hideGarage(G) { this.els.garageScreen.classList.add('hidden'); },
   garageNote(G, text) { this.els.garageNote.textContent = text; },
 
-  // --- Weapon wheel overlay (hold Tab).
+  // --- Weapon wheel overlay (hold Tab): all four weapons, fists show ∞.
   showWheel(G, sel) {
     const e = this.els;
-    e.wheelSlots.innerHTML = ['pistol', 'smg'].map((k) => {
+    e.wheelSlots.innerHTML = NV_CONFIG.weaponOrder.map((k) => {
       const d = NV_CONFIG.weapons[k];
       const cur = sel === k;
-      return '<div class="wheelslot' + (cur ? ' on' : '') + '"><b>' + d.name + '</b><span>' + G.player.ammoBy[k] + ' / ' + d.mag + '</span></div>';
+      const ammo = d.melee ? '∞' : (G.player.ammoBy[k] + ' / ' + d.mag);
+      return '<div class="wheelslot' + (cur ? ' on' : '') + '"><b>' + d.name + '</b><span>' + ammo + '</span></div>';
     }).join('');
     e.wheel.classList.remove('hidden');
   },
   hideWheel(G) { this.els.wheel.classList.add('hidden'); },
+
+  // --- KPD dispatch panel: the responding units, live, nearest first.
+  // Shown during a chase (2+ stars), hidden when calm.
+  drawDispatch(G) {
+    const e = this.els.dispatch;
+    if (G.wanted < 2 || G.screen !== 'playing') { e.classList.add('hidden'); return; }
+    const pp = G.player.inCar ? G.player.car.group.position : G.player.pos;
+    const dist = (p) => Math.hypot(p.x - pp.x, p.z - pp.z);
+    const units = [];
+    for (const c of NV_POLICE.cruisers) {
+      units.push({ name: c.callsign || 'KPD', role: c.role || 'PURSUIT', d: dist(c.group.position) });
+    }
+    for (const rb of NV_POLICE.roadblocks) {
+      for (const c of rb.cars) {
+        units.push({ name: c.callsign || 'BLOCK', role: 'ROADBLOCK', d: dist(c.group.position) });
+      }
+    }
+    for (const o of NV_POLICE.officers.slice(0, 2)) {
+      units.push({ name: o.callsign || 'KPD', role: o.role || 'FOOT PATROL', d: dist(o.pos) });
+    }
+    if (NV_POLICE.heli) {
+      units.push({ name: 'AIR-1', role: 'AIR UNIT', d: dist(NV_POLICE.heli.group.position) });
+    }
+    units.sort((a, b) => a.d - b.d);
+    const rows = units.slice(0, 6).map((u) => (
+      '<div class="drow"><span class="dcall">' + u.name + '</span>' +
+      '<span class="drole">' + u.role + '</span>' +
+      '<span class="ddist">' + Math.round(u.d) + ' m</span></div>'
+    )).join('');
+    const extra = units.length > 6
+      ? '<div class="drow dmore">+' + (units.length - 6) + ' more</div>' : '';
+    e.innerHTML = '<div class="dhead">KPD RESPONSE &nbsp;·&nbsp; ' + units.length + ' UNITS</div>' + rows + extra;
+    e.classList.remove('hidden');
+  },
 
   update(G, dt) {
     const e = this.els;
@@ -102,13 +211,16 @@ const NV_HUD = {
     e.hpfill.style.width = hp + '%';
     e.hptext.textContent = 'HP ' + hp;
     const w = NV_COMBAT.weaponDef(P);
-    e.ammo.textContent = P.inCar ? 'DRIVING' : (P.reloadT > 0 ? 'RELOADING…' : w.name + ' ' + P.ammo + ' / ' + w.mag);
-    // Weapon slots: [1] PISTOL [2] SMG, current one highlighted.
-    e.weapons.innerHTML = ['pistol', 'smg'].map((k, i) => {
+    e.ammo.textContent = P.inCar ? 'DRIVING' : (P.reloadT > 0 ? 'RELOADING…' : (w.melee ? 'FISTS ∞' : w.name + ' ' + P.ammo + ' / ' + w.mag));
+    // Weapon slots: [1] FISTS [2] PISTOL [3] SMG [4] AR-9, current one highlighted.
+    e.weapons.innerHTML = NV_CONFIG.weaponOrder.map((k, i) => {
       const d = NV_CONFIG.weapons[k];
       const cur = P.weapon === k;
-      return '<span class="wslot' + (cur ? ' on' : '') + '">' + (i + 1) + ' ' + d.name + ' ' + P.ammoBy[k] + '/' + d.mag + '</span>';
+      const ammo = d.melee ? '∞' : (P.ammoBy[k] + '/' + d.mag);
+      return '<span class="wslot' + (cur ? ' on' : '') + '">' + (i + 1) + ' ' + d.name + ' ' + ammo + '</span>';
     }).join('');
+    // KPD dispatch panel during a chase.
+    this.drawDispatch(G);
     // Nitro meter (only when the player owns nitro).
     const hasNitro = (G.upgrades && G.upgrades.nitro > 0);
     e.nitro.classList.toggle('hidden', !hasNitro);
@@ -145,17 +257,24 @@ const NV_HUD = {
     this.drawMinimap(G);
   },
 
+  // Zoomed minimap: a 900x700 world-unit window around the player, so
+  // streets and blocks read instead of the whole city collapsing into
+  // a noise grid. The window clamps to the city bounds.
   drawMinimap(G) {
     const ctx = this.els.minimapCtx;
     const W = NV_CONFIG.world;
     const S = 220;
-    const sx = (x) => (x + W.sizeX / 2) / W.sizeX * S;
-    const sy = (z) => (z + W.sizeZ / 2) / W.sizeZ * S;
-    // Grass base.
-    ctx.fillStyle = '#1d3a1e';
+    const pp0 = G.player.inCar ? G.player.car.group.position : G.player.pos;
+    const VW = 900, VH = 700;
+    const cx = Math.max(-W.sizeX / 2 + VW / 2, Math.min(W.sizeX / 2 - VW / 2, pp0.x));
+    const cz = Math.max(-W.sizeZ / 2 + VH / 2, Math.min(W.sizeZ / 2 - VH / 2, pp0.z));
+    const sx = (x) => (x - (cx - VW / 2)) / VW * S;
+    const sy = (z) => (z - (cz - VH / 2)) / VH * S;
+    // Dark city base so the bright roads read at a glance.
+    ctx.fillStyle = '#0e0e16';
     ctx.fillRect(0, 0, S, S);
-    // Sidewalk pads (city blocks).
-    ctx.fillStyle = '#3a3a44';
+    // Sidewalk pads (city blocks), dark so roads + buildings pop.
+    ctx.fillStyle = '#26263a';
     for (let bx = -1100; bx <= 1100; bx += W.roadGap) {
       for (let bz = -800; bz <= 800; bz += W.roadGap) {
         if (bz >= W.beachZ - 100) continue;
@@ -170,8 +289,8 @@ const NV_HUD = {
     ctx.fillStyle = '#0e4d7a'; ctx.fillRect(0, sy(W.oceanZ), S, S - sy(W.oceanZ));
     // Marina water (east edge).
     ctx.fillStyle = '#0e4d7a'; ctx.fillRect(sx(1010), sy(240), S - sx(1010), sy(560) - sy(240));
-    // Roads, drawn bright so the grid reads at a glance.
-    ctx.strokeStyle = '#9a9aa8'; ctx.lineWidth = 3;
+    // Roads, bright and thick so the grid reads, not the blocks.
+    ctx.strokeStyle = '#a8a8b8'; ctx.lineWidth = 4;
     for (let x = -1000; x <= 1000; x += W.roadGap) {
       ctx.beginPath(); ctx.moveTo(sx(x), 0); ctx.lineTo(sx(x), sy(W.beachZ)); ctx.stroke();
     }
@@ -180,10 +299,10 @@ const NV_HUD = {
     }
     // Beach road.
     ctx.beginPath(); ctx.moveTo(0, sy(730)); ctx.lineTo(S, sy(730)); ctx.stroke();
-    // Buildings as solid blocks so the city reads, not just the grid.
-    ctx.fillStyle = '#9a8fd6';
+    // Buildings as muted blocks so the city reads, not just the grid.
+    ctx.fillStyle = '#8a7fd0';
     for (const b of G.world.buildings) {
-      ctx.fillRect(sx(b.x - b.w / 2), sy(b.z - b.d / 2), Math.max(2, (b.w / W.sizeX) * S), Math.max(2, (b.d / W.sizeZ) * S));
+      ctx.fillRect(sx(b.x - b.w / 2), sy(b.z - b.d / 2), Math.max(3, (b.w / VW) * S), Math.max(3, (b.d / VH) * S));
     }
     const dot = (x, z, r, color) => {
       ctx.fillStyle = color;
@@ -192,33 +311,33 @@ const NV_HUD = {
     // Mission marker: the mission target, or the live beacon when the
     // mission has no fixed target (staged shots, m7 survive phase).
     if (G.mission && G.mission.target) {
-      dot(G.mission.target.x, G.mission.target.z, 6, '#ff2e88');
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(sx(G.mission.target.x), sy(G.mission.target.z), 8, 0, Math.PI * 2); ctx.stroke();
+      dot(G.mission.target.x, G.mission.target.z, 7, '#ff2e88');
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx(G.mission.target.x), sy(G.mission.target.z), 10, 0, Math.PI * 2); ctx.stroke();
     } else if (G.world.beacon && G.world.beacon.visible) {
       const bp = G.world.beacon.position;
-      dot(bp.x, bp.z, 6, '#ff2e88');
+      dot(bp.x, bp.z, 7, '#ff2e88');
     }
     // Police cruisers + roadblocks + heli.
-    for (const c of NV_POLICE.cruisers) dot(c.group.position.x, c.group.position.z, 3, '#4aa8ff');
+    for (const c of NV_POLICE.cruisers) dot(c.group.position.x, c.group.position.z, 4, '#4aa8ff');
     for (const rb of NV_POLICE.roadblocks) {
-      for (const c of rb.cars) dot(c.group.position.x, c.group.position.z, 3, '#4aa8ff');
+      for (const c of rb.cars) dot(c.group.position.x, c.group.position.z, 4, '#4aa8ff');
     }
-    if (NV_POLICE.heli) dot(NV_POLICE.heli.group.position.x, NV_POLICE.heli.group.position.z, 4, '#ffd75e');
+    if (NV_POLICE.heli) dot(NV_POLICE.heli.group.position.x, NV_POLICE.heli.group.position.z, 5, '#ffd75e');
     // Mission actors: V, guards, courier, rival, payoff truck.
     if (NV_MISSIONS.v) dot(NV_MISSIONS.v.pos.x, NV_MISSIONS.v.pos.z, 4, '#19c3ff');
     for (const gd of NV_MISSIONS.guards) dot(gd.pos.x, gd.pos.z, 3, '#ff5040');
     if (NV_MISSIONS.courier) dot(NV_MISSIONS.courier.group.position.x, NV_MISSIONS.courier.group.position.z, 4, '#ffd75e');
     if (NV_MISSIONS.rival) dot(NV_MISSIONS.rival.group.position.x, NV_MISSIONS.rival.group.position.z, 4, '#b06ae8');
     if (NV_MISSIONS.truck) dot(NV_MISSIONS.truck.group.position.x, NV_MISSIONS.truck.group.position.z, 4, '#ffd75e');
-    // Player arrow.
+    // Player arrow, bigger so it never drowns in the grid.
     const pp = G.player.inCar ? G.player.car.group.position : G.player.pos;
     const yaw = G.player.inCar ? G.player.car.yaw : G.player.yaw;
     ctx.save();
     ctx.translate(sx(pp.x), sy(pp.z));
     ctx.rotate(-yaw);
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -5); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
     ctx.restore();
   },
 };

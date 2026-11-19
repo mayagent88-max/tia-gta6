@@ -58,7 +58,8 @@ const NV_MAIN = {
   },
   resetRun(G) {
     const P = G.player;
-    P.hp = 100; P.weapon = 'pistol'; P.ammoBy = { pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag };
+    P.hp = 100; P.weapon = 'pistol';
+    P.ammoBy = { fists: Infinity, pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag, ar: NV_CONFIG.weapons.ar.mag };
     P.ammo = P.ammoBy.pistol; P.reloadT = 0;
     P.pos.copy(G.world.locations.spawn);
     P.yaw = -Math.PI / 2; P.camYaw = -Math.PI / 2;
@@ -146,6 +147,8 @@ function buildGame() {
 
   NV_TRAFFIC.init(scene, rng, NV_WORLD);
   G.cars.push(...NV_TRAFFIC.trafficCars, ...NV_TRAFFIC.parkedCars);
+  // Street-prop parked cars from the world build are stealable too.
+  G.cars.push(...NV_WORLD.decorCars);
   // Owned cars from the save wait at the garage yard.
   G.ownedCars.forEach((owned, i) => NV_GARAGE.parkOwned(G, owned, i));
   // Raycast ownership for cars.
@@ -238,12 +241,14 @@ function updatePlaying(G, dt) {
     return;
   }
   if (I.consume('g') && NV_GARAGE.nearGarage(G)) { NV_GARAGE.open(G); return; }
-  // Weapon wheel: hold Tab to open, 1/2 or A/D to pick, release Tab to
+  // Weapon wheel: hold Tab to open, 1-4 or A/D to pick, release Tab to
   // switch. While it is open the action waits.
   if (I.keys.tab && !NV_COMBAT.wheelOpen) NV_COMBAT.openWheel(G);
   if (NV_COMBAT.wheelOpen) {
-    if (I.consume('1')) NV_COMBAT.wheelSelect(G, 'pistol');
-    if (I.consume('2')) NV_COMBAT.wheelSelect(G, 'smg');
+    if (I.consume('1')) NV_COMBAT.wheelSelect(G, 'fists');
+    if (I.consume('2')) NV_COMBAT.wheelSelect(G, 'pistol');
+    if (I.consume('3')) NV_COMBAT.wheelSelect(G, 'smg');
+    if (I.consume('4')) NV_COMBAT.wheelSelect(G, 'ar');
     if (I.consume('a')) NV_COMBAT.wheelCycle(G, -1);
     if (I.consume('d')) NV_COMBAT.wheelCycle(G, 1);
     if (I.clicked) NV_COMBAT.closeWheel(G, true);
@@ -259,8 +264,10 @@ function updatePlaying(G, dt) {
   }
   if (I.consume('n')) NV_AUDIO.toggleMute();
   if (I.consume('r')) NV_HUD.banner(G, 'RADIO: ' + NV_AUDIO.cycleRadio());
-  if (I.consume('1')) NV_COMBAT.switchWeapon(G, 'pistol');
-  if (I.consume('2')) NV_COMBAT.switchWeapon(G, 'smg');
+  if (I.consume('1')) NV_COMBAT.switchWeapon(G, 'fists');
+  if (I.consume('2')) NV_COMBAT.switchWeapon(G, 'pistol');
+  if (I.consume('3')) NV_COMBAT.switchWeapon(G, 'smg');
+  if (I.consume('4')) NV_COMBAT.switchWeapon(G, 'ar');
   if (I.consume('q')) NV_COMBAT.startReload(G);
   if (I.consume('m')) {
     if (!G.mission && G.missionsDone < 10) NV_MISSIONS.startMission(G, G.missionsDone);

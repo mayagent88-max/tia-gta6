@@ -1,7 +1,8 @@
-// Combat: two weapons (pistol + SMG, switched with 1/2 or the hold-Tab
-// weapon wheel), raycast shots from the camera, enemy fire, tracers,
-// impact bursts, screen shake and damage. Cars explode at 0 HP. Ammo
-// reloads with Q, or automatically when a mag runs dry.
+// Combat: four weapons (fists + pistol + SMG + AR-9, switched with 1-4
+// or the hold-Tab weapon wheel), raycast shots from the camera, enemy
+// fire, tracers, impact bursts, screen shake and damage. Cars explode at
+// 0 HP. Ammo reloads with Q, or automatically when a mag runs dry —
+// fists are free melee and never reload.
 const NV_COMBAT = {
   tracers: [], parts: [], raycaster: null,
   wheelOpen: false, wheelSel: 'pistol',
@@ -33,7 +34,7 @@ const NV_COMBAT = {
     NV_AUDIO.click();
   },
   wheelCycle(G, dir) {
-    const order = ['pistol', 'smg'];
+    const order = NV_CONFIG.weaponOrder;
     const i = order.indexOf(this.wheelSel);
     this.wheelSelect(G, order[(i + dir + order.length) % order.length]);
   },
@@ -44,11 +45,22 @@ const NV_COMBAT = {
   },
 
   // Ammo per weapon lives in P.ammoBy; P.ammo always mirrors the active one.
+  // Fists are melee: no mag, no reload, ammo reads as infinite.
   ensureWeapons(P) {
     if (!P.ammoBy) {
       P.weapon = 'pistol';
-      P.ammoBy = { pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag };
+      P.ammoBy = {
+        fists: Infinity,
+        pistol: NV_CONFIG.weapons.pistol.mag,
+        smg: NV_CONFIG.weapons.smg.mag,
+        ar: NV_CONFIG.weapons.ar.mag,
+      };
       P.ammo = P.ammoBy.pistol;
+    }
+    if (P.ammoBy.ar === undefined) {
+      P.ammoBy.fists = Infinity;
+      P.ammoBy.ar = NV_CONFIG.weapons.ar.mag;
+      P.ammo = P.ammoBy[P.weapon];
     }
   },
 
@@ -69,10 +81,40 @@ const NV_COMBAT = {
     const P = G.player;
     this.ensureWeapons(P);
     const w = this.weaponDef(P);
-    if (P.inCar || P.reloadT > 0 || P.ammo >= w.mag) return false;
+    if (w.melee || P.inCar || P.reloadT > 0 || P.ammo >= w.mag) return false;
     P.reloadT = NV_CONFIG.player.reloadTime;
     NV_AUDIO.reload();
     return true;
+  },
+
+  // Fists: a close swing at the nearest officer or guard in front of
+  // Jax. No ammo, no tracer — a burst and a thud where the hit lands.
+  meleeAttack(G) {
+    const P = G.player;
+    const w = this.weaponDef(P);
+    P.shootT = w.cooldown;
+    NV_AUDIO.noise(0.09, 0.2, 300);
+    G.shake = Math.min(1, G.shake + 0.08);
+    const fx = Math.cos(P.camYaw), fz = -Math.sin(P.camYaw);
+    let best = null, bestD = 3.5;
+    const consider = (pos, ref, kind) => {
+      const dx = pos.x - P.pos.x, dz = pos.z - P.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d > bestD) return;
+      // Must be roughly in front of the camera.
+      if ((dx * fx + dz * fz) / (d || 1) < 0.4) return;
+      bestD = d;
+      best = { pos, ref, kind };
+    };
+    for (const o of NV_POLICE.officers) consider(o.pos, o, 'officer');
+    for (const gd of NV_MISSIONS.guards) consider(gd.pos, gd, 'guard');
+    if (!best) return;
+    const hit = new THREE.Vector3(best.pos.x, 1.4, best.pos.z);
+    this.spawnBurst(G, hit, 0xffd75e, 8, 5);
+    if (best.kind === 'officer') this.damageOfficer(G, best.ref, w.damage);
+    else this.damageGuard(G, best.ref, w.damage);
+    NV_POLICE.addWanted(G, 0); // a swing keeps the heat fresh
+    G.player.lastShotT = G.time;
   },
 
   shoot(G) {
@@ -80,11 +122,13 @@ const NV_COMBAT = {
     this.ensureWeapons(P);
     const w = this.weaponDef(P);
     if (P.inCar || P.reloadT > 0 || P.shootT > 0) return;
+    if (w.melee) { this.meleeAttack(G); return; }
     if (P.ammo <= 0) { this.startReload(G); return; }
     P.shootT = w.cooldown;
     P.ammo -= 1;
     P.ammoBy[P.weapon] = P.ammo;
     if (P.weapon === 'smg') { NV_AUDIO.noise(0.07, 0.16, 3000); this.toneSmg(); }
+    else if (P.weapon === 'ar') { NV_AUDIO.noise(0.09, 0.14, 1800); this.toneSmg(); }
     else NV_AUDIO.shot();
     G.shake = Math.min(1, G.shake + (P.weapon === 'smg' ? 0.06 : 0.12));
     const cam = G.camera;
@@ -232,16 +276,16 @@ const NV_COMBAT = {
     // Player health regen after 5 calm seconds.
     const P = G.player;
     this.ensureWeapons(P);
+    const w = this.weaponDef(P);
     if (P.hp > 0 && P.hp < 100 && G.time - (P.lastHurtT || -99) > 5) P.hp = Math.min(100, P.hp + 6 * dt);
     if (P.reloadT > 0) {
       P.reloadT -= dt;
       if (P.reloadT <= 0) {
-        const w = this.weaponDef(P);
         P.ammo = w.mag;
         P.ammoBy[P.weapon] = P.ammo;
       }
-    } else if (P.ammo <= 0 && !P.inCar && G.screen === 'playing') {
-      this.startReload(G); // dry mag reloads itself
+    } else if (!w.melee && P.ammo <= 0 && !P.inCar && G.screen === 'playing') {
+      this.startReload(G); // dry mag reloads itself (fists never reload)
     }
     if (P.shootT > 0) P.shootT -= dt;
   },

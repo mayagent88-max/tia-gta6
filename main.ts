@@ -13,9 +13,12 @@
 // pedestrians, a wanted level, police cruisers, roadblocks and a news helicopter with a
 // searchlight, the AURA CREW (respect ranks, crew members with passive bonuses, district
 // standing that pays a bonus on jobs), owned cars Jax keeps in his garage with per-car
-// engine/armor/nitro upgrades, a three-station synth radio, two weapons with a hold-Tab
-// weapon wheel, combat, a HUD with a live minimap (roads, buildings, police, mission
-// marker), a start screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
+// engine/armor/nitro upgrades, a three-station synth radio, four weapons (fists, pistol,
+// SMG, AR-9) with a hold-Tab weapon wheel, a live KPD dispatch panel naming every
+// responding unit, character portraits in the dialog box, street props (market stalls,
+// planters, benches, barriers, beach umbrellas) packing the plaza and beach road, combat,
+// a HUD with a live minimap (bright roads, buildings, police, mission marker), a start
+// screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
 // in screenshots/ (the first by name is the cover) and run it.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.

@@ -22,13 +22,14 @@
       <div id="district"></div>
     </div>
     <div id="hud-right"><div id="stars"></div><div id="radio">♪ NEON FM</div></div>
+    <div id="dispatch" class="hidden"></div>
     <div id="objective"></div>
-    <div id="dialog" class="hidden"></div>
+    <div id="dialog" class="hidden"><canvas id="dialog-face" class="hidden" width="64" height="64"></canvas><div id="dialog-body"><div id="dialog-name" class="hidden"></div><div id="dialog-text"></div></div></div>
     <div id="banner" class="hidden"></div>
     <div id="garage-prompt" class="hidden">Press G — AURA MOTORS garage (upgrades)</div>
     <div id="keep-prompt" class="hidden"></div>
-    <div id="wheel" class="hidden"><div id="wheel-title">WEAPON WHEEL — hold Tab, pick with 1 / 2</div><div id="wheel-slots"></div></div>
-    <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter car &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; Q reload &nbsp;·&nbsp; 1/2 weapons &nbsp;·&nbsp; Tab wheel &nbsp;·&nbsp; K keep car &nbsp;·&nbsp; R radio &nbsp;·&nbsp; G garage &nbsp;·&nbsp; M mission &nbsp;·&nbsp; P pause &nbsp;·&nbsp; N mute</div>
+    <div id="wheel" class="hidden"><div id="wheel-title">WEAPON WHEEL — hold Tab, pick with 1–4</div><div id="wheel-slots"></div></div>
+    <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter car &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; Q reload &nbsp;·&nbsp; 1–4 weapons &nbsp;·&nbsp; Tab wheel &nbsp;·&nbsp; K keep car &nbsp;·&nbsp; R radio &nbsp;·&nbsp; G garage &nbsp;·&nbsp; M mission &nbsp;·&nbsp; P pause &nbsp;·&nbsp; N mute</div>
     <div id="crosshair" class="hidden"><div></div></div>
     <canvas id="minimap" width="220" height="220"></canvas>
   </div>
@@ -37,7 +38,7 @@
     <h2>— AURA CITY —</h2>
     <p>Jax owes the Meridian Syndicate a fortune.<br>V has a plan: ten jobs, one sunset, and the debt is gone.<br>Welcome to Aura City. Try not to get caught.</p>
     <button id="start-btn">START ENGINE</button>
-    <p class="controls">WASD / Arrows — move or drive &nbsp;·&nbsp; Mouse — aim &nbsp;·&nbsp; Click — shoot<br>E — steal / enter / exit car &nbsp;·&nbsp; SHIFT — sprint / nitro &nbsp;·&nbsp; Q — reload<br>1 / 2 — pistol / SMG &nbsp;·&nbsp; Tab — weapon wheel &nbsp;·&nbsp; K — keep a car<br>R — radio &nbsp;·&nbsp; G — garage at AURA MOTORS &nbsp;·&nbsp; M — start next mission &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; N — mute</p>
+    <p class="controls">WASD / Arrows — move or drive &nbsp;·&nbsp; Mouse — aim &nbsp;·&nbsp; Click — shoot<br>E — steal / enter / exit car &nbsp;·&nbsp; SHIFT — sprint / nitro &nbsp;·&nbsp; Q — reload<br>1–4 — fists / pistol / SMG / AR-9 &nbsp;·&nbsp; Tab — weapon wheel &nbsp;·&nbsp; K — keep a car<br>R — radio &nbsp;·&nbsp; G — garage at AURA MOTORS &nbsp;·&nbsp; M — start next mission &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; N — mute</p>
     <p id="save-line" class="save-line"></p>
   </div>
   <div id="pause-screen" class="overlay hidden">

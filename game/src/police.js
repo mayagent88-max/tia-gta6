@@ -5,6 +5,16 @@
 const NV_POLICE = {
   cruisers: [], officers: [], heli: null, heat: 0, lastCrimeT: -99,
   roadblocks: [], roadblockT: 0,
+  // KPD callsigns for the dispatch panel: each responding unit gets a
+  // name + role so the panel reads like a real police radio.
+  callsigns: ['KITE-1', 'MARLIN-3', 'CORAL-48', 'CORAL-85', 'CORAL-43', 'VIPER-7', 'ORCA-2', 'TIDE-9'],
+  roles: ['PURSUIT', 'RAMMING', 'FLANKING', 'SHORE WATCH', 'MARKSMAN', 'INTERCEPT'],
+  callIdx: 0,
+  nextUnit(role) {
+    const name = this.callsigns[this.callIdx % this.callsigns.length];
+    this.callIdx += 1;
+    return { callsign: name, role: role || this.roles[this.callIdx % this.roles.length] };
+  },
 
   addWanted(G, n) {
     G.wanted = Math.max(0, Math.min(5, G.wanted + n));
@@ -30,6 +40,8 @@ const NV_POLICE = {
     const wantCruisers = Math.min(G.wanted + (G.wanted >= 5 ? 1 : 0), NV_CONFIG.police.maxCruisers + 1);
     while (this.cruisers.length < wantCruisers) {
       const car = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      const id = this.nextUnit();
+      car.callsign = id.callsign; car.role = id.role;
       const a = G.rng.range(0, Math.PI * 2);
       const p = G.rng.pick(G.world.roadPoints);
       car.group.position.set(p.x, 0, p.z);
@@ -104,7 +116,7 @@ const NV_POLICE = {
       const a = G.rng.range(0, Math.PI * 2);
       person.group.position.set(playerPos.x + Math.cos(a) * 60, 0, playerPos.z + Math.sin(a) * 60);
       G.scene.add(person.group);
-      this.officers.push({ mesh: person, pos: person.group.position, yaw: 0, hp: 50, shootT: 1, bustT: 0, phase: 0 });
+      this.officers.push({ mesh: person, pos: person.group.position, yaw: 0, hp: 50, shootT: 1, bustT: 0, phase: 0, callsign: 'KPD-' + (100 + this.officers.length), role: 'FOOT PATROL' });
     }
     for (let i = this.officers.length - 1; i >= 0; i -= 1) {
       const o = this.officers[i];
@@ -140,6 +152,7 @@ const NV_POLICE = {
     // Helicopter at 3+ stars: circles the player, spotlight follows.
     if (G.wanted >= NV_CONFIG.police.heliAtWanted && !this.heli) {
       this.heli = NV_ENTITIES.makeHeli(G.scene);
+      this.heli.callsign = 'AIR-1'; this.heli.role = 'AIR UNIT';
       NV_AUDIO.setSiren(true);
     }
     if (this.heli) {
@@ -148,10 +161,18 @@ const NV_POLICE = {
         this.heli = null;
       } else {
         const h = this.heli;
-        h.angle += dt * 0.45;
-        const hx = playerPos.x + Math.cos(h.angle) * 45;
-        const hz = playerPos.z + Math.sin(h.angle) * 45;
-        h.group.position.set(hx, 58, hz);
+        // Staged shots hold the heli at a fixed angle (orbitHold) so
+        // it stays in frame; live chases keep orbiting.
+        if (!h.orbitHold) h.angle += dt * 0.45;
+        // Staged shots may pull the heli closer (orbitR) so it reads
+        // in frame from a low chase camera; live chases use 45.
+        const hr = h.orbitR || 45;
+        const hx = playerPos.x + Math.cos(h.angle) * hr;
+        const hz = playerPos.z + Math.sin(h.angle) * hr;
+        // Staged shots fly the heli lower (orbitH) so it reads in frame;
+        // live play keeps the standard 58.
+        const hy = h.orbitH || 58;
+        h.group.position.set(hx, hy, hz);
         h.group.rotation.y = Math.atan2(-(playerPos.z - hz), playerPos.x - hx);
         h.rotor.rotation.y += dt * 22;
         h.light.target.position.set(playerPos.x - hx, -58, playerPos.z - hz);
@@ -179,6 +200,8 @@ const NV_POLICE = {
     for (const s of [-6, 6]) {
       const c = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c.heavy = true;
+      c.callsign = 'BLOCK-' + (this.roadblocks.length + 1) + (s < 0 ? 'A' : 'B');
+      c.role = 'ROADBLOCK';
       c.group.position.set(alongX ? best.x : best.x + s, 0, alongX ? best.z + s : best.z);
       c.yaw = alongX ? Math.PI / 2 : 0;
       c.group.rotation.y = c.yaw;

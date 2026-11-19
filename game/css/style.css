@@ -23,12 +23,19 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #wheel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(5,2,16,0.85); border: 2px solid #ff2e88; border-radius: 12px; padding: 18px 22px; text-align: center; }
 #wheel-title { font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #ffd75e; margin-bottom: 12px; }
 #wheel-slots { display: flex; gap: 14px; }
-.wheelslot { display: flex; flex-direction: column; align-items: center; min-width: 130px; background: #222; border: 2px solid #444; border-radius: 8px; padding: 12px 10px; }
+.wheelslot { display: flex; flex-direction: column; align-items: center; min-width: 110px; background: #222; border: 2px solid #444; border-radius: 8px; padding: 12px 10px; }
 .wheelslot b { font-size: 18px; letter-spacing: 2px; color: #bbb; }
 .wheelslot span { font-size: 13px; font-weight: 700; color: #ffd75e; margin-top: 6px; }
 .wheelslot.on { border-color: #ffd75e; background: #3a2f10; }
 .wheelslot.on b { color: #ffd75e; }
 #radio { font-size: 13px; font-weight: 700; color: #19c3ff; margin-top: 4px; text-align: right; }
+#dispatch { position: absolute; left: 14px; top: 245px; background: rgba(0,0,0,0.6); border-left: 4px solid #4aa8ff; border-radius: 6px; padding: 8px 12px; min-width: 250px; }
+.dhead { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #4aa8ff; margin-bottom: 5px; }
+.drow { display: flex; font-size: 12px; font-weight: 700; line-height: 1.7; }
+.dcall { color: #fff; width: 74px; }
+.drole { color: #ff8fb8; flex: 1; }
+.ddist { color: #ffd75e; }
+.dmore { color: #9a9aa8; }
 #garage-prompt { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); background: rgba(255,46,136,0.85); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; }
 #garage-rows { margin-top: 18px; text-align: left; }
 .grow { font-size: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 16px; margin-top: 8px; min-width: 520px; }
@@ -41,7 +48,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #stars { font-size: 26px; letter-spacing: 4px; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
 #stars .off { color: #555; text-shadow: none; }
 #objective { position: absolute; left: 14px; bottom: 14px; max-width: 460px; background: rgba(0,0,0,0.6); border-left: 4px solid #ff2e88; border-radius: 6px; padding: 10px 14px; font-size: 15px; font-weight: 700; }
-#dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(10,5,30,0.85); border: 1px solid #ff2e88; border-radius: 8px; padding: 12px 18px; font-size: 16px; max-width: 560px; text-align: center; }
+#dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(10,5,30,0.85); border: 1px solid #ff2e88; border-radius: 8px; padding: 10px 16px; font-size: 16px; max-width: 620px; text-align: left; }
+#dialog-face { width: 64px; height: 64px; border-radius: 8px; flex: none; }
+#dialog-body { min-width: 0; }
+#dialog-name { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #19c3ff; margin-bottom: 3px; }
+#dialog-text { font-size: 16px; line-height: 1.35; }
 #banner { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); font-size: 34px; font-weight: 900; letter-spacing: 3px; color: #ff2e88; text-shadow: 0 0 18px rgba(255,46,136,0.8), 0 2px 0 #000; text-align: center; white-space: nowrap; }
 #hint { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,0.65); background: rgba(0,0,0,0.4); padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
 #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }

@@ -275,6 +275,71 @@ const NV_WORLD = {
     crewSign.position.set(-900, 9, 491.5);
     scene.add(crewSign);
 
+    // --- Street props: market stalls, planters, benches, barriers,
+    // beach umbrellas and extra parked cars, so no frame is a bare
+    // ground plane. Stalls/planters/benches/barriers are solid.
+    this.decorCars = [];
+    const box = (w, h, d, color, x, y, z, ry) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
+      m.position.set(x, y, z);
+      if (ry) m.rotation.y = ry;
+      scene.add(m);
+      return m;
+    };
+    const addCollider = (x, z, hw, hd) => this.colliders.push({ minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd });
+    // Market stalls at Neon Plaza: counter + striped canopy + goods.
+    const stripeC = document.createElement('canvas'); stripeC.width = 128; stripeC.height = 32;
+    const sg2 = stripeC.getContext('2d');
+    for (let i = 0; i < 8; i += 1) { sg2.fillStyle = i % 2 ? '#ff2e88' : '#fff2c0'; sg2.fillRect(i * 16, 0, 16, 32); }
+    const stripeTex = new THREE.CanvasTexture(stripeC);
+    for (const [sx, sz, ry] of [[-45, -35, 0.4], [45, -45, -0.3], [-45, 45, 2.8], [45, 20, -1.2]]) {
+      box(5, 1.1, 3, 0x6b4a2a, sx, 0.55, sz, ry);
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.25, 3.6), new THREE.MeshStandardMaterial({ map: stripeTex, roughness: 0.8 }));
+      canopy.position.set(sx, 2.9, sz); canopy.rotation.y = ry;
+      scene.add(canopy);
+      box(1.2, 0.8, 1, 0xffd75e, sx - 1, 1.5, sz, ry);
+      box(1.2, 0.8, 1, 0x19c3ff, sx + 1, 1.5, sz, ry);
+      addCollider(sx, sz, 2.8, 1.8);
+    }
+    // Planters with a small tree, along the plaza edge + beach road.
+    for (const [px, pz] of [[-100, -60], [100, -60], [-100, 60], [100, 60], [-750, 705], [-450, 705], [-150, 705], [150, 705], [450, 705], [750, 705]]) {
+      box(2, 1, 2, 0x4a6b3a, px, 0.5, pz);
+      const tree = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3, 6), new THREE.MeshStandardMaterial({ color: 0x1e7d32, roughness: 0.9 }));
+      tree.position.set(px, 2.5, pz);
+      scene.add(tree);
+      addCollider(px, pz, 1.1, 1.1);
+    }
+    // Benches along the beach road, the plaza and the marina.
+    for (const [bx, bz, ry] of [[-600, 760, 0], [-300, 760, 0], [300, 760, 0], [600, 760, 0], [0, -70, Math.PI / 2], [1050, 350, Math.PI / 2]]) {
+      box(3.2, 0.5, 1, 0x7a5a3a, bx, 0.6, bz, ry);
+      box(0.3, 0.6, 0.9, 0x33333d, bx - 1.3, 0.3, bz, ry);
+      box(0.3, 0.6, 0.9, 0x33333d, bx + 1.3, 0.3, bz, ry);
+      addCollider(bx, bz, 1.7, 0.6);
+    }
+    // Roadwork barriers at the plaza corners.
+    for (const [bx, bz, ry] of [[100, 12, 0], [-100, -12, 0], [12, 100, Math.PI / 2], [-12, -100, Math.PI / 2]]) {
+      box(3, 0.9, 0.4, 0xff7a2e, bx, 0.8, bz, ry);
+      addCollider(bx, bz, 1.6, 0.5);
+    }
+    // Beach umbrellas on the sand.
+    for (const [ux, uz, col] of [[-800, 790, 0xff2e88], [-400, 790, 0x19c3ff], [400, 790, 0xffd75e], [800, 790, 0xff2e88], [0, 830, 0x19c3ff]]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 6), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+      pole.position.set(ux, 1.5, uz);
+      scene.add(pole);
+      const top = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.2, 8), new THREE.MeshStandardMaterial({ color: col, roughness: 0.8 }));
+      top.position.set(ux, 3.4, uz);
+      scene.add(top);
+    }
+    // Extra parked cars on the beach-road shoulder, the marina and the
+    // garage yard — stealable, like the other parked cars.
+    for (const [cx, cz, col] of [[-120, 748, 0x7a4ad6], [140, 748, 0xffd75e], [-300, 712, 0x19c3ff], [320, 712, 0x7a4ad6], [900, 380, 0xff5a3c], [-650, -440, 0x39d353]]) {
+      const car = NV_ENTITIES.makeCar(col, 'parked');
+      car.group.position.set(cx, 0, cz);
+      car.group.rotation.y = 0;
+      scene.add(car.group);
+      this.decorCars.push(car);
+    }
+
     // Sun disc low on the western horizon.
     this.sunMesh = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshBasicMaterial({ color: 0xffb347, fog: false }));
     this.sunMesh.position.set(-1100, 150, 200);
@@ -301,6 +366,44 @@ const NV_WORLD = {
     beacon.visible = false;
     scene.add(beacon);
     this.beacon = beacon;
+  },
+
+  // Props added at runtime (shot staging): stall / planter / bench.
+  // Same shapes as the build-time props, with colliders.
+  addMarketStall(x, z, ry) {
+    const scene = this.sceneRef; if (!scene) return;
+    const box = (w, h, d, color, bx, by, bz, r) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
+      m.position.set(bx, by, bz); if (r) m.rotation.y = r; scene.add(m); return m;
+    };
+    box(5, 1.1, 3, 0x6b4a2a, x, 0.55, z, ry);
+    const stripeC = document.createElement('canvas'); stripeC.width = 128; stripeC.height = 32;
+    const sg2 = stripeC.getContext('2d');
+    for (let i = 0; i < 8; i += 1) { sg2.fillStyle = i % 2 ? '#ff2e88' : '#fff2c0'; sg2.fillRect(i * 16, 0, 16, 32); }
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.25, 3.6), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(stripeC), roughness: 0.8 }));
+    canopy.position.set(x, 2.9, z); canopy.rotation.y = ry || 0; scene.add(canopy);
+    box(1.2, 0.8, 1, 0xffd75e, x - 1, 1.5, z, ry);
+    box(1.2, 0.8, 1, 0x19c3ff, x + 1, 1.5, z, ry);
+    this.colliders.push({ minX: x - 2.8, maxX: x + 2.8, minZ: z - 1.8, maxZ: z + 1.8 });
+  },
+  addPlanter(x, z) {
+    const scene = this.sceneRef; if (!scene) return;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2), new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.85 }));
+    m.position.set(x, 0.5, z); scene.add(m);
+    const tree = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3, 6), new THREE.MeshStandardMaterial({ color: 0x1e7d32, roughness: 0.9 }));
+    tree.position.set(x, 2.5, z); scene.add(tree);
+    this.colliders.push({ minX: x - 1.1, maxX: x + 1.1, minZ: z - 1.1, maxZ: z + 1.1 });
+  },
+  addBench(x, z, ry) {
+    const scene = this.sceneRef; if (!scene) return;
+    const box = (w, h, d, color, bx, by, bz, r) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
+      m.position.set(bx, by, bz); if (r) m.rotation.y = r; scene.add(m); return m;
+    };
+    box(3.2, 0.5, 1, 0x7a5a3a, x, 0.6, z, ry);
+    box(0.3, 0.6, 0.9, 0x33333d, x - 1.3, 0.3, z, ry);
+    box(0.3, 0.6, 0.9, 0x33333d, x + 1.3, 0.3, z, ry);
+    this.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: z - 0.6, maxZ: z + 0.6 });
   },
 
   setBeacon(x, z, color) {
