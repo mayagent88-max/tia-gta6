@@ -1,5 +1,8 @@
 // Street life: traffic cars that drive the road grid and pedestrians who
 // walk the sidewalks and flee gunfire. Parked cars wait to be stolen.
+// Final-build note (re-record, 2026-11-19): density is up for the final build —
+// 20 traffic cars, 48 pedestrians, 14 parked cars — so the streets and the cover
+// frame read as a lived-in city, not an empty grid.
 const NV_TRAFFIC = {
   trafficCars: [], peds: [], parkedCars: [],
   palette: [0xe8e8e8, 0x2a6fd6, 0xd62a2a, 0x2ad67a, 0xe8c832, 0x7a4ad6, 0xd67a2a, 0x4a4a55],

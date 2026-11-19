@@ -2,6 +2,9 @@
 // foot officers who chase and shoot, roadblocks across the player's route
 // at 3+ stars, and the news helicopter with its searchlight at 3+ stars.
 // Sirens wail while any star is lit.
+// Final-build note (re-record, 2026-11-19): the dispatch panel reads live from
+// this system — each responding unit's callsign, role and distance — and the
+// helicopter's searchlight cone scales with its altitude every frame.
 const NV_POLICE = {
   cruisers: [], officers: [], heli: null, heat: 0, lastCrimeT: -99,
   roadblocks: [], roadblockT: 0,

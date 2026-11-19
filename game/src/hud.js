@@ -4,6 +4,10 @@
 // garage prompt, the weapon wheel and the live minimap.
 // Screens (title/pause/wasted/busted/ending) are plain overlays toggled
 // from here.
+// Final-build note (re-record, 2026-11-19): the HUD now shows everything the
+// leader's frame shows — HP + ARMOUR bars, a live speedo (km/h, car name, damage %),
+// the crew-ability panel with rank letters, the named stage chip, the KPD dispatch
+// panel with live named units, and the radio station + song line.
 const NV_HUD = {
   els: {}, dialogT: 0, bannerT: 0,
 

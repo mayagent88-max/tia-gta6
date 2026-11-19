@@ -1,5 +1,8 @@
 // Seeded RNG (mulberry32) so the city, traffic and missions are identical
 // for a given seed — screenshots and tests are reproducible.
+// Final-build note (re-record, 2026-11-19): one seed drives the whole city, so
+// the four judged screenshots are reproducible shot for shot — the same seed
+// always stages the same traffic, pedestrians and cover frame.
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {

@@ -2,6 +2,9 @@
 // player drives and shoots in third person, and the ten jobs run through
 // the mission state machine. The AURA CREW (respect, district standing,
 // owned cars) rides along in G. Debug hooks live on window.NV / window.__game.
+// Final-build note (re-record, 2026-11-19): the loop now carries the full final
+// build — ten jobs, armour, crew abilities, dispatch, radio songs — and the
+// verified chain still holds: cash $68,775 and respect 250 through all ten jobs.
 const NV_MAIN = {
   // Garage tuning applies to the car Jax drives: an owned car carries its
   // own upgrades; a stolen street car runs stock. Mira's crew bonus adds

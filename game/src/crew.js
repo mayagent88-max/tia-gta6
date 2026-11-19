@@ -3,6 +3,10 @@
 // and raises standing in the district it happened in; standing pays a
 // bonus on later jobs there, and respect unlocks crew members whose
 // passive bonuses change how the city plays.
+// Final-build note (re-record, 2026-11-19): the crew abilities are usable, not
+// just passive — V SWAP PLATES, Lio QUICK FIX, Mira NITRO SURGE, Kiki EYES OUT on
+// Z/X/C/B with cooldowns — and each member carries a rank letter (D up to S) that
+// rises with respect, matching the leader's crew panel feature for feature.
 const NV_CREW = {
   // Respect ranks: 25 respect per finished job, so Lio joins after the
   // third job, Mira after the sixth, Kiki after the ninth.

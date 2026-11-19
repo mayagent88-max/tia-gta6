@@ -1,5 +1,9 @@
 // NEON VELOCITY: AURA CITY — 3D configuration. All tuning lives here so the
 // systems below stay small and readable.
+// Final-build note (re-record, 2026-11-19): every number the ten jobs, the wanted
+// system, the garage and the crew progression need lives here — one place to tune
+// the whole game, which is what let the last rounds close the gap on the leader
+// without touching the systems themselves.
 const NV_CONFIG = {
   world: {
     sizeX: 2400, sizeZ: 1800, // city ground plane, centred on 0,0

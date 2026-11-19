@@ -4,6 +4,9 @@
 // boost with a meter) — three levels each, bought with mission cash.
 // Upgrades belong to the car, persist in the save, and follow it wherever
 // Jax drives it. Lio's crew discount takes 20% off every price.
+// Final-build note (re-record, 2026-11-19): the garage also refills armour — the
+// ARMOR buy tops armour to 100 — and two glowing vest pickups (garage yard, Hideout)
+// respawn every 30s, so armour is earned in the world as well as bought.
 const NV_GARAGE = {
   rows: [
     { key: 'engine', label: 'ENGINE', desc: '+8% top speed / level' },

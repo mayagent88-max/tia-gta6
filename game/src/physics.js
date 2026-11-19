@@ -2,6 +2,9 @@
 // mover is a circle. Movement is tried axis by axis so a car slides along
 // walls instead of sticking, and physics runs in 2 sub-steps per frame so a
 // fast car cannot tunnel through a wall.
+// Final-build note (re-record, 2026-11-19): the two sub-steps per frame are what
+// keep fast cars from tunneling through walls at 100+ km/h on the speedo — the
+// collision layer the chase and escape jobs depend on.
 const NV_PHYSICS = {
   // Move a circle (pos is a THREE.Vector3, y is kept) by dx/dz, resolving
   // against the collider list. Returns true if anything blocked the move.

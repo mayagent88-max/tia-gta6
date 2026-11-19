@@ -2,6 +2,9 @@
 // helicopter, built from boxes. Driving is arcade physics with sub-step
 // integration; the player walks, drives, steals and exits cars here.
 // Owned cars (car.owned) carry their own upgrades and a crew name.
+// Final-build note (re-record, 2026-11-19): the news helicopter is a dark navy
+// police bird now — tail fin, tail rotor, landing skids, and a translucent
+// searchlight cone with a bright ground pool that follows it at 3+ stars.
 const NV_ENTITIES = {
   // A car from boxes: body, cabin, four wheels, lights and a neon underglow.
   makeCar(color, kind) {

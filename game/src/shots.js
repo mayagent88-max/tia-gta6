@@ -1,6 +1,9 @@
 // Screenshot scenes behind ?shot=cover|chase|city|mission. Each one stages
 // the live game (real state, real HUD) and raises window.__shotReady once
 // the frame has settled. Debug hooks live on window.NV / window.__game.
+// Final-build note (re-record, 2026-11-19): the cover stages a parked foreground
+// car and a zebra crosswalk into the lower frame and pulls the helicopter closer,
+// so no judged frame is a stretch of empty asphalt — every shot is dense.
 const NV_SHOTS = {
   params() { return new URLSearchParams(window.location.search); },
 

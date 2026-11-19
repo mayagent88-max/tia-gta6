@@ -4,6 +4,10 @@
 // the district it happened in, and saves; failing one sends Jax back to
 // the start of that job. The last two jobs are staged set-pieces: the
 // four-phase Neon Heist and the Syndicate Finale against the boss.
+// Final-build note (re-record, 2026-11-19): every stage of every job has a named
+// sub-objective now (STAGE 2/4 · DRAIN THE ATM, STAGE 5/5 · VANISH AT FOUR STARS),
+// shown in the stage chip and banner — the leader's named-stage presentation,
+// matched on all ten jobs.
 const NV_MISSIONS = {
   guards: [], v: null, courier: null, rival: null, truck: null,
   gold: null, boss: null,

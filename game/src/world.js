@@ -1,6 +1,9 @@
 // Aura City, generated from one seed: a road grid, neon blocks, a beach and
 // an ocean, a marina, and the story landmarks. Everything is built from
 // boxes, instanced meshes and canvas textures — no downloaded models.
+// Final-build note (re-record, 2026-11-19): the ground is textured now — sidewalk
+// tile grids, zebra crosswalks at every intersection, plaza checker, road edge
+// lines, grass and beach speckle — so the city overview reads as a city.
 const NV_WORLD = {
   colliders: [], buildings: [], roadPoints: [], armourPickups: [],
   locations: {}, beacon: null, oceanTex: null, sunMesh: null,

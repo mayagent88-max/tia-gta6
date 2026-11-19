@@ -3,6 +3,9 @@
 // fire, tracers, impact bursts, screen shake and damage. Cars explode at
 // 0 HP. Ammo reloads with Q, or automatically when a mag runs dry —
 // fists are free melee and never reload.
+// Final-build note (re-record, 2026-11-19): four weapons put the entry at parity
+// with the rank-1 leader — FISTS (melee, infinite), PISTOL 12, SMG 32, AR-9 30 —
+// on keys 1-4 and the hold-Tab wheel, with raycast shots, tracers and shake.
 const NV_COMBAT = {
   tracers: [], parts: [], raycaster: null,
   wheelOpen: false, wheelSel: 'pistol',

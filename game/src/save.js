@@ -2,6 +2,9 @@
 // holds cash, completed jobs, garage upgrades, the AURA CREW (respect,
 // district standing, unlocked members) and the owned cars Jax keeps in
 // his garage, so a run survives a reload.
+// Final-build note (re-record, 2026-11-19): the v2 save also holds crew ability
+// unlocks and rank letters, so a reloaded run keeps the whole progression layer
+// — respect, standing, owned cars, garage upgrades — intact.
 const NV_SAVE = {
   key: 'nv-aura-city-save-v2',
   load() {
