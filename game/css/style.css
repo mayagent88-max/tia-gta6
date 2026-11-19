@@ -17,10 +17,22 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #nitro { width: 170px; height: 8px; background: #222; border-radius: 4px; margin-top: 6px; overflow: hidden; }
 #nitrofill { height: 100%; width: 100%; background: linear-gradient(90deg, #19c3ff, #7ee7ff); border-radius: 4px; }
 #upgrades { font-size: 11px; font-weight: 700; margin-top: 6px; color: #9a8fd6; letter-spacing: 1px; }
+#respect { font-size: 11px; font-weight: 700; margin-top: 4px; color: #39d353; letter-spacing: 1px; }
+#district { font-size: 11px; font-weight: 700; margin-top: 4px; color: #7ee7ff; letter-spacing: 1px; }
+#keep-prompt { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(25,195,255,0.85); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; }
+#wheel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(5,2,16,0.85); border: 2px solid #ff2e88; border-radius: 12px; padding: 18px 22px; text-align: center; }
+#wheel-title { font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #ffd75e; margin-bottom: 12px; }
+#wheel-slots { display: flex; gap: 14px; }
+.wheelslot { display: flex; flex-direction: column; align-items: center; min-width: 130px; background: #222; border: 2px solid #444; border-radius: 8px; padding: 12px 10px; }
+.wheelslot b { font-size: 18px; letter-spacing: 2px; color: #bbb; }
+.wheelslot span { font-size: 13px; font-weight: 700; color: #ffd75e; margin-top: 6px; }
+.wheelslot.on { border-color: #ffd75e; background: #3a2f10; }
+.wheelslot.on b { color: #ffd75e; }
 #radio { font-size: 13px; font-weight: 700; color: #19c3ff; margin-top: 4px; text-align: right; }
 #garage-prompt { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); background: rgba(255,46,136,0.85); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; }
 #garage-rows { margin-top: 18px; text-align: left; }
 .grow { font-size: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 16px; margin-top: 8px; min-width: 520px; }
+.grow.sel { border: 2px solid #39d353; }
 .gkey { display: inline-block; background: #ff2e88; border-radius: 4px; padding: 1px 8px; font-weight: 800; margin-right: 8px; }
 .gdesc { color: #bdbdbd; font-size: 14px; }
 .glvl { float: right; color: #ffd75e; font-weight: 800; margin-left: 12px; }

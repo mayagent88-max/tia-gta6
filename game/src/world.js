@@ -212,7 +212,7 @@ const NV_WORLD = {
       this.boats.push(boat);
     });
 
-    // --- Landmarks: garage, ATM kiosks, hideout ring, sun disc.
+    // --- Landmarks: garage, ATM kiosks, hideout ring, security panel, sun disc.
     this.locations = {
       spawn: new THREE.Vector3(0, 0, 40),
       garage: new THREE.Vector3(-700, 0, -500),
@@ -223,6 +223,7 @@ const NV_WORLD = {
       marina: new THREE.Vector3(1100, 0, 400),
       beachRoad: new THREE.Vector3(0, 0, 730),
       plaza: new THREE.Vector3(0, 0, 0),
+      panel: new THREE.Vector3(60, 0, 60),
     };
     const garage = new THREE.Mesh(new THREE.BoxGeometry(26, 9, 16), new THREE.MeshStandardMaterial({ color: 0x33333d, roughness: 0.7 }));
     garage.position.set(-700, 4.5, -500);
@@ -255,6 +256,24 @@ const NV_WORLD = {
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(-900, 0.1, 500);
     scene.add(ring);
+    // Security panel kiosk at Neon Plaza (m9 heist) and the AURA CREW
+    // sign over the Hideout — the crew's home base.
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(3, 4.5, 2), new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.6 }));
+    panel.position.set(60, 2.25, 60);
+    scene.add(panel);
+    this.colliders.push({ minX: 58.5, maxX: 61.5, minZ: 59, maxZ: 61 });
+    const panelScreen = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.6), new THREE.MeshBasicMaterial({ color: 0xff5040 }));
+    panelScreen.position.set(60, 3.2, 61.1);
+    scene.add(panelScreen);
+    const crewC = document.createElement('canvas'); crewC.width = 512; crewC.height = 96;
+    const cg = crewC.getContext('2d');
+    cg.fillStyle = '#14061f'; cg.fillRect(0, 0, 512, 96);
+    cg.fillStyle = '#39d353'; cg.font = 'bold 52px Arial'; cg.textAlign = 'center';
+    cg.fillText('AURA CREW HQ', 256, 66);
+    const crewTex = new THREE.CanvasTexture(crewC);
+    const crewSign = new THREE.Mesh(new THREE.PlaneGeometry(20, 3.8), new THREE.MeshBasicMaterial({ map: crewTex }));
+    crewSign.position.set(-900, 9, 491.5);
+    scene.add(crewSign);
 
     // Sun disc low on the western horizon.
     this.sunMesh = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshBasicMaterial({ color: 0xffb347, fog: false }));

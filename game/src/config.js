@@ -37,45 +37,60 @@ const NV_CONFIG = {
   },
   missions: [
     {
-      id: 'm1', name: 'FAST BREAK',
+      id: 'm1', name: 'FAST BREAK', district: 'garage',
       brief: 'Steal the AURA GT prototype from the garage, then lose the heat at the Hideout.',
       reward: 2500,
     },
     {
-      id: 'm2', name: 'DATA BREACH',
+      id: 'm2', name: 'DATA BREACH', district: 'plaza',
       brief: 'Protect V while she hacks the Central ATM. Survive 90 seconds of security waves.',
       reward: 4000,
     },
     {
-      id: 'm3', name: 'GOLDEN HOUR SCORE',
+      id: 'm3', name: 'GOLDEN HOUR SCORE', district: 'beach',
       brief: 'Sunset escape: drive the beach road to the Marina boat while the heli hunts you.',
       reward: 7500,
     },
     {
-      id: 'm4', name: 'COURIER INTERCEPT',
+      id: 'm4', name: 'COURIER INTERCEPT', district: 'beach',
       brief: 'A rival courier is running Syndicate cash down the beach road. Grab the package and drop it at Neon Plaza.',
       reward: 3500,
     },
     {
-      id: 'm5', name: 'VAULT CHAIN',
+      id: 'm5', name: 'VAULT CHAIN', district: 'mixed',
       brief: 'Drain three vault terminals across the city — Central ATM, garage yard, marina dock. Hold E at each one.',
       reward: 5000,
     },
     {
-      id: 'm6', name: 'RIVAL RACE',
+      id: 'm6', name: 'RIVAL RACE', district: 'plaza',
       brief: 'A rival crew driver challenges you to a street race: four checkpoints, first one there wins. Get a car.',
       reward: 5500,
     },
     {
-      id: 'm7', name: 'SKYLINE GETAWAY',
+      id: 'm7', name: 'SKYLINE GETAWAY', district: 'beach',
       brief: 'Four stars and nowhere to hide. Survive 60 seconds of heat, then reach the Hideout.',
       reward: 6500,
     },
     {
-      id: 'm8', name: 'THE PAYOFF',
+      id: 'm8', name: 'THE PAYOFF', district: 'marina',
       brief: 'The final job: drive the payoff truck to the Marina boat under five stars. Do not lose the truck.',
       reward: 10000,
     },
+    {
+      id: 'm9', name: 'NEON HEIST', district: 'plaza',
+      brief: 'A four-phase heist at Neon Plaza: scout the panel, kill the security, grab the gold car and run at four stars.',
+      reward: 8000,
+    },
+    {
+      id: 'm10', name: 'SYNDICATE FINALE', district: 'marina',
+      brief: 'The boss himself. Chase his car through three checkpoints, take down his guards, and deliver his ride to the Marina.',
+      reward: 12000,
+    },
+  ],
+  // Names for cars Jax keeps in his garage, picked by colour.
+  carNames: [
+    'NEON STREAKER', 'VICE VIPER', 'GOLDEN HOUR', 'MIDNIGHT RUNNER',
+    'SUNSET BLADE', 'PALM SHADOW', 'CHROME TIDE', 'STATIC KING',
   ],
   // Palette: sun-soaked neon coast.
   colors: {

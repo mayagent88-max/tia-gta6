@@ -35,4 +35,9 @@ const NV_PHYSICS = {
     pos.x = Math.max(-W.sizeX / 2 + margin, Math.min(W.sizeX / 2 - margin, pos.x));
     pos.z = Math.max(-W.sizeZ / 2 + margin, Math.min(W.sizeZ / 2 - margin, pos.z));
   },
+  // Point inside an axis-aligned rect {minX,maxX,minZ,maxZ} — used by
+  // the crew layer to test district bounds.
+  insideRect(x, z, r) {
+    return x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ;
+  },
 };

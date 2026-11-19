@@ -52,6 +52,16 @@ const NV_AUDIO = {
     const notes = [523, 659, 784, 1046];
     notes.forEach((f, i) => setTimeout(() => this.tone(f, 0.18, 'triangle', 0.18), i * 110));
   },
+  // Rank-up sting: a rising fifth for new respect, and a longer fanfare
+  // when a crew member joins the AURA CREW.
+  respect() {
+    const notes = [392, 523, 659];
+    notes.forEach((f, i) => setTimeout(() => this.tone(f, 0.14, 'triangle', 0.16), i * 90));
+  },
+  crewJoin() {
+    const notes = [523, 659, 784, 1046, 1318];
+    notes.forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'triangle', 0.2), i * 120));
+  },
   setSiren(on) {
     if (!this.ctx) return;
     if (on && !this.siren) {

@@ -1,7 +1,8 @@
 // The HUD: cash, health, weapons + ammo, wanted stars, radio station,
-// the mission objective, dialog, banners, the garage prompt and the live
-// minimap. Screens (title/pause/wasted/busted/ending) are plain overlays
-// toggled from here.
+// respect + district standing + crew, the mission objective, dialog,
+// banners, the garage prompt, the weapon wheel and the live minimap.
+// Screens (title/pause/wasted/busted/ending) are plain overlays toggled
+// from here.
 const NV_HUD = {
   els: {}, dialogT: 0, bannerT: 0,
 
@@ -11,14 +12,18 @@ const NV_HUD = {
       hud: $('hud'), cash: $('cash'), hpfill: $('hpfill'), hptext: $('hptext'),
       ammo: $('ammo'), weapons: $('weapons'), nitro: $('nitro'), nitrofill: $('nitrofill'),
       upgrades: $('upgrades'), radio: $('radio'),
+      respect: $('respect'), district: $('district'),
       stars: $('stars'), objective: $('objective'),
       dialog: $('dialog'), banner: $('banner'), crosshair: $('crosshair'),
       minimap: $('minimap'),
+      wheel: $('wheel'), wheelSlots: $('wheel-slots'),
+      keepPrompt: $('keep-prompt'),
       title: $('title-screen'), pause: $('pause-screen'),
       wasted: $('wasted-screen'), busted: $('busted-screen'), ending: $('ending-screen'),
       saveLine: $('save-line'), endingStats: $('ending-stats'),
       garagePrompt: $('garage-prompt'), garageScreen: $('garage-screen'),
       garageRows: $('garage-rows'), garageNote: $('garage-note'),
+      garageCars: $('garage-cars'),
     };
     this.els.minimapCtx = this.els.minimap.getContext('2d');
   },
@@ -30,14 +35,14 @@ const NV_HUD = {
     if (name === 'title') {
       e.title.classList.remove('hidden');
       if (G.missionsDone > 0 || G.cash > 0) {
-        e.saveLine.textContent = 'Save found: ' + G.missionsDone + '/8 jobs done, $' + G.cash + ' banked.';
+        e.saveLine.textContent = 'Save found: ' + G.missionsDone + '/10 jobs done, $' + G.cash + ' banked.';
       }
     }
     if (name === 'paused') e.pause.classList.remove('hidden');
     if (name === 'wasted') e.wasted.classList.remove('hidden');
     if (name === 'busted') e.busted.classList.remove('hidden');
     if (name === 'ending') {
-      e.endingStats.textContent = 'Jobs done: ' + G.missionsDone + '/8 · Cash banked: $' + G.cash;
+      e.endingStats.textContent = 'Jobs done: ' + G.missionsDone + '/10 · Cash banked: $' + G.cash + ' · ' + NV_CREW.hudLine(G);
       e.ending.classList.remove('hidden');
     }
   },
@@ -54,20 +59,39 @@ const NV_HUD = {
     this.bannerT = 2.6;
   },
 
-  // --- Garage overlay.
+  // --- Garage overlay: the selected owned car's upgrades, plus the
+  // collection itself (press 4 to pick another car, 5 to summon it).
   showGarage(G) {
     const e = this.els;
+    const owned = NV_GARAGE.selectedCar(G);
     const rows = NV_GARAGE.rows.map((r, i) => {
-      const lvl = (G.upgrades && G.upgrades[r.key]) || 0;
-      const cost = NV_GARAGE.nextCost(G, r.key);
-      const right = cost === null ? 'MAX' : '$' + cost;
+      const lvl = (owned && owned.upgrades[r.key]) || 0;
+      const cost = owned ? NV_GARAGE.nextCost(G, r.key, owned) : null;
+      const right = !owned ? '—' : (cost === null ? 'MAX' : '$' + cost);
       return '<div class="grow"><span class="gkey">' + (i + 1) + '</span> <b>' + r.label + '</b> <span class="gdesc">' + r.desc + '</span> <span class="glvl">LV ' + lvl + '</span> <span class="gcost">' + right + '</span></div>';
     }).join('');
     e.garageRows.innerHTML = rows;
+    const cars = (G.ownedCars || []).map((o, i) => {
+      const sel = owned === o;
+      return '<div class="grow' + (sel ? ' sel' : '') + '"><span class="gkey">CAR</span> <b>' + o.name + '</b> <span class="gdesc">ENG ' + o.upgrades.engine + ' · ARM ' + o.upgrades.armor + ' · NITRO ' + o.upgrades.nitro + '</span>' + (sel ? ' <span class="gcost">SELECTED</span>' : '') + '</div>';
+    }).join('');
+    e.garageCars.innerHTML = cars || '<div class="grow"><span class="gdesc">No owned cars yet — steal one off the street and press K to keep it.</span></div>';
     e.garageScreen.classList.remove('hidden');
   },
   hideGarage(G) { this.els.garageScreen.classList.add('hidden'); },
   garageNote(G, text) { this.els.garageNote.textContent = text; },
+
+  // --- Weapon wheel overlay (hold Tab).
+  showWheel(G, sel) {
+    const e = this.els;
+    e.wheelSlots.innerHTML = ['pistol', 'smg'].map((k) => {
+      const d = NV_CONFIG.weapons[k];
+      const cur = sel === k;
+      return '<div class="wheelslot' + (cur ? ' on' : '') + '"><b>' + d.name + '</b><span>' + G.player.ammoBy[k] + ' / ' + d.mag + '</span></div>';
+    }).join('');
+    e.wheel.classList.remove('hidden');
+  },
+  hideWheel(G) { this.els.wheel.classList.add('hidden'); },
 
   update(G, dt) {
     const e = this.els;
@@ -94,10 +118,18 @@ const NV_HUD = {
       e.nitrofill.style.width = v + '%';
     }
     const u = G.upgrades || { engine: 0, armor: 0, nitro: 0 };
-    e.upgrades.textContent = 'ENG ' + u.engine + ' · ARM ' + u.armor + ' · NITRO ' + u.nitro;
+    const cur = G.player.inCar && G.player.car && G.player.car.owned ? G.player.car.owned.upgrades : u;
+    e.upgrades.textContent = 'ENG ' + cur.engine + ' · ARM ' + cur.armor + ' · NITRO ' + cur.nitro;
     e.radio.textContent = '♪ ' + NV_AUDIO.radioName();
+    // Respect + crew, and the district the player is standing in.
+    e.respect.textContent = NV_CREW.hudLine(G);
+    e.district.textContent = NV_CREW.districtLine(G);
     // Garage prompt near AURA MOTORS.
     e.garagePrompt.classList.toggle('hidden', !(G.screen === 'playing' && !G.garageOpen && NV_GARAGE.nearGarage(G)));
+    // Keep-car prompt: driving a stealable street car.
+    const kp = G.screen === 'playing' && !G.garageOpen && P.inCar && NV_GARAGE.keepable(P.car);
+    e.keepPrompt.classList.toggle('hidden', !kp);
+    if (kp) e.keepPrompt.textContent = 'Press K — keep this car in your garage';
     let stars = '';
     for (let i = 0; i < 5; i += 1) stars += '<span class="' + (i < G.wanted ? '' : 'off') + '">★</span>';
     e.stars.innerHTML = stars;

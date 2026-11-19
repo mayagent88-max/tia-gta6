@@ -46,7 +46,28 @@ const NV_TRAFFIC = {
     const playerPos = G.player.inCar ? G.player.car.group.position : G.player.pos;
     // Traffic: drive toward the current intersection, pick a new one on arrival.
     for (const car of this.trafficCars) {
-      if (car.wrecked) continue;
+      if (car.wrecked) {
+        // A wrecked traffic car is towed away and a fresh one rolls in,
+        // so the streets never empty out after a shootout.
+        car.respawnT = (car.respawnT || 0) + dt;
+        if (car.respawnT > 30) {
+          car.respawnT = 0;
+          car.wrecked = false;
+          car.hp = 100;
+          car.speed = 8;
+          const p = G.rng.pick(world.roadPoints);
+          car.group.position.set(p.x, 0, p.z);
+          car.target = G.rng.pick(world.roadPoints);
+          // Paint it back: explosions darken every part's material.
+          if (car.paintMat) car.paintMat.color.setHex(car.color);
+          if (car.darkMat) car.darkMat.color.setHex(0x111116);
+          if (car.wheelMat) car.wheelMat.color.setHex(0x0a0a0a);
+          if (car.headMat) car.headMat.color.setHex(0xfff2c0);
+          if (car.tailMat) car.tailMat.color.setHex(0xff2020);
+          if (car.glowMat) { car.glowMat.color.setHex(car.color); car.glowMat.opacity = 0.22; }
+        }
+        continue;
+      }
       const dx = car.target.x - car.group.position.x;
       const dz = car.target.z - car.group.position.z;
       const dist = Math.hypot(dx, dz);

@@ -8,7 +8,7 @@ const NV_INPUT = {
       const k = e.key.toLowerCase();
       this.keys[k] = true;
       this.pressed[k] = true;
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
     document.addEventListener('mousemove', (e) => {

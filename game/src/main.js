@@ -1,12 +1,15 @@
 // Boot and the one loop: the 3D city renders behind the title screen, the
-// player drives and shoots in third person, and the eight jobs run through
-// the mission state machine. Debug hooks live on window.NV / window.__game.
+// player drives and shoots in third person, and the ten jobs run through
+// the mission state machine. The AURA CREW (respect, district standing,
+// owned cars) rides along in G. Debug hooks live on window.NV / window.__game.
 const NV_MAIN = {
-  // Garage tuning applies to whichever car Jax drives: engine raises the
-  // top speed, armor raises the car's HP cap, nitro fills its boost meter.
+  // Garage tuning applies to the car Jax drives: an owned car carries its
+  // own upgrades; a stolen street car runs stock. Mira's crew bonus adds
+  // 12% top speed to every car Jax drives.
   applyUpgrades(G, car) {
-    const u = G.upgrades || { engine: 0, armor: 0, nitro: 0 };
+    const u = (car.owned && car.owned.upgrades) || { engine: 0, armor: 0, nitro: 0 };
     car.upg = u;
+    car.topMul = NV_CREW.topSpeedMult(G);
     car.hpMax = 100 + 50 * u.armor;
     if (car.hp === undefined || car.hp > car.hpMax) car.hp = car.hpMax;
     if (car.nitro === undefined) car.nitro = 100;
@@ -64,6 +67,8 @@ const NV_MAIN = {
     G.wanted = 0;
     G.garageOpen = false;
     NV_HUD.hideGarage(G);
+    NV_COMBAT.wheelOpen = false;
+    NV_HUD.hideWheel(G);
     NV_MISSIONS.clearField(G);
     NV_POLICE.clearRoadblocks(G);
     G.mission = null;
@@ -80,6 +85,20 @@ const NV_MAIN = {
     NV_HUD.setObjective(G, 'Press M to start the first mission.');
   },
 };
+
+// PLAY AGAIN after the ending starts a fresh campaign: the owned cars
+// leave the scene and the crew, respect and standing reset with the cash.
+function clearProgression(G) {
+  for (const c of [...G.cars]) {
+    if (c.owned) {
+      G.scene.remove(c.group);
+      G.cars.splice(G.cars.indexOf(c), 1);
+    }
+  }
+  G.crew = NV_CREW.fresh();
+  G.ownedCars = [];
+  G.selectedOwned = 0;
+}
 
 function buildGame() {
   const params = new URLSearchParams(window.location.search);
@@ -107,6 +126,9 @@ function buildGame() {
   const save = NV_SAVE.load();
   G.cash = save.cash; G.missionsDone = save.missionsDone;
   G.upgrades = save.upgrades || { engine: 0, armor: 0, nitro: 0 };
+  G.crew = save.crew || NV_CREW.fresh();
+  G.ownedCars = save.ownedCars || [];
+  G.selectedOwned = 0;
   G.garageOpen = false;
 
   // Player: Jax, orange shirt, dark pants.
@@ -124,6 +146,8 @@ function buildGame() {
 
   NV_TRAFFIC.init(scene, rng, NV_WORLD);
   G.cars.push(...NV_TRAFFIC.trafficCars, ...NV_TRAFFIC.parkedCars);
+  // Owned cars from the save wait at the garage yard.
+  G.ownedCars.forEach((owned, i) => NV_GARAGE.parkOwned(G, owned, i));
   // Raycast ownership for cars.
   for (const car of G.cars) car.group.userData.owner = { kind: 'car', ref: car };
 
@@ -140,6 +164,7 @@ function buildGame() {
   document.getElementById('ending-btn').addEventListener('click', () => {
     NV_SAVE.clear();
     G.cash = 0; G.missionsDone = 0; G.upgrades = { engine: 0, armor: 0, nitro: 0 };
+    clearProgression(G);
     NV_MAIN.resetRun(G);
   });
   window.addEventListener('resize', () => {
@@ -172,6 +197,7 @@ function buildGame() {
     else if (G.screen === 'ending' && NV_INPUT.consume('enter')) {
       NV_SAVE.clear();
       G.cash = 0; G.missionsDone = 0; G.upgrades = { engine: 0, armor: 0, nitro: 0 };
+      clearProgression(G);
       NV_MAIN.resetRun(G);
     }
     if (G.screen === 'playing') updatePlaying(G, dt);
@@ -206,10 +232,26 @@ function updatePlaying(G, dt) {
     if (I.consume('1')) NV_GARAGE.buy(G, 'engine');
     if (I.consume('2')) NV_GARAGE.buy(G, 'armor');
     if (I.consume('3')) NV_GARAGE.buy(G, 'nitro');
+    if (I.consume('4')) NV_GARAGE.cycleSelected(G);
+    if (I.consume('5')) { if (NV_GARAGE.summon(G)) NV_GARAGE.close(G); }
     if (I.consume('g') || I.consume('escape')) NV_GARAGE.close(G);
     return;
   }
   if (I.consume('g') && NV_GARAGE.nearGarage(G)) { NV_GARAGE.open(G); return; }
+  // Weapon wheel: hold Tab to open, 1/2 or A/D to pick, release Tab to
+  // switch. While it is open the action waits.
+  if (I.keys.tab && !NV_COMBAT.wheelOpen) NV_COMBAT.openWheel(G);
+  if (NV_COMBAT.wheelOpen) {
+    if (I.consume('1')) NV_COMBAT.wheelSelect(G, 'pistol');
+    if (I.consume('2')) NV_COMBAT.wheelSelect(G, 'smg');
+    if (I.consume('a')) NV_COMBAT.wheelCycle(G, -1);
+    if (I.consume('d')) NV_COMBAT.wheelCycle(G, 1);
+    if (I.clicked) NV_COMBAT.closeWheel(G, true);
+    else if (!I.keys.tab && !G.shotWheel) NV_COMBAT.closeWheel(G, true);
+    return;
+  }
+  // Keep a stolen street car in the garage (K), up to four owned cars.
+  if (I.consume('k') && P.inCar && NV_GARAGE.keepable(P.car)) NV_GARAGE.keepCar(G, P.car);
   if (I.consume('p')) {
     G.screen = 'paused';
     NV_HUD.showScreen(G, 'paused');
@@ -221,7 +263,7 @@ function updatePlaying(G, dt) {
   if (I.consume('2')) NV_COMBAT.switchWeapon(G, 'smg');
   if (I.consume('q')) NV_COMBAT.startReload(G);
   if (I.consume('m')) {
-    if (!G.mission && G.missionsDone < 8) NV_MISSIONS.startMission(G, G.missionsDone);
+    if (!G.mission && G.missionsDone < 10) NV_MISSIONS.startMission(G, G.missionsDone);
   }
   if (I.consume('e')) {
     if (!NV_MISSIONS.tryInteract(G)) {

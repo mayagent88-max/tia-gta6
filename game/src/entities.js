@@ -1,11 +1,15 @@
 // Entity factories and movement: low-poly cars, people and the news
 // helicopter, built from boxes. Driving is arcade physics with sub-step
 // integration; the player walks, drives, steals and exits cars here.
+// Owned cars (car.owned) carry their own upgrades and a crew name.
 const NV_ENTITIES = {
   // A car from boxes: body, cabin, four wheels, lights and a neon underglow.
   makeCar(color, kind) {
     const group = new THREE.Group();
     const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.6 });
+    // The gold heist car glows warm: a little emissive keeps it reading
+    // gold under the purple night sky instead of washing out to tan.
+    if (kind === 'gold') { paint.emissive = new THREE.Color(0x8a6d00); paint.emissiveIntensity = 0.7; }
     const dark = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.4, metalness: 0.4 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.85, 2.0), paint);
     body.position.y = 0.62;
@@ -45,6 +49,9 @@ const NV_ENTITIES = {
     const car = {
       group, wheels, glow, kind: kind || 'traffic', color, yaw: 0, speed: 0, steer: 0,
       hp: 100, driver: null, wrecked: false, lightRed: null, lightBlue: null,
+      // Stashed materials so a respawned traffic car gets its paint back
+      // after an explosion darkened every part.
+      paintMat: paint, darkMat: dark, wheelMat, headMat, tailMat, glowMat: glow.material,
     };
     if (kind === 'police') {
       const barBase = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 1.2), dark);
@@ -120,10 +127,11 @@ const NV_ENTITIES = {
   // Arcade driving: accel/brake/steer with drift, 2 sub-steps, wall and
   // car collision. Returns the distance driven this frame. Garage tuning
   // (car.upg) raises the top speed; Shift fires the nitro boost when owned.
+  // Mira's crew bonus (car.topMul) adds 12% top speed to cars Jax drives.
   updateCar(car, input, dt, colliders, others) {
     const C = NV_CONFIG.car;
     const upg = car.upg || { engine: 0, armor: 0, nitro: 0 };
-    const topSpeed = C.maxSpeed * (1 + 0.08 * upg.engine);
+    const topSpeed = C.maxSpeed * (1 + 0.08 * upg.engine) * (car.topMul || 1);
     const handbrake = !!input.keys[' '];
     const grip = handbrake ? C.driftGrip : C.grip;
     const targetSteer = (input.keys.a || input.keys.arrowleft ? 1 : 0) - (input.keys.d || input.keys.arrowright ? 1 : 0);

@@ -1,11 +1,42 @@
-// Combat: two weapons (pistol + SMG, switched with 1/2), raycast shots
-// from the camera, enemy fire, tracers, impact bursts, screen shake and
-// damage. Cars explode at 0 HP. Ammo reloads with Q, or automatically when
-// a mag runs dry.
+// Combat: two weapons (pistol + SMG, switched with 1/2 or the hold-Tab
+// weapon wheel), raycast shots from the camera, enemy fire, tracers,
+// impact bursts, screen shake and damage. Cars explode at 0 HP. Ammo
+// reloads with Q, or automatically when a mag runs dry.
 const NV_COMBAT = {
   tracers: [], parts: [], raycaster: null,
+  wheelOpen: false, wheelSel: 'pistol',
 
   init() { this.raycaster = new THREE.Raycaster(); },
+
+  // --- Weapon wheel: hold Tab to open, 1/2 or A/D to pick a weapon,
+  // release Tab (or click) to switch to it. The HUD draws the wheel.
+  openWheel(G) {
+    if (this.wheelOpen) return;
+    this.ensureWeapons(G.player);
+    this.wheelOpen = true;
+    this.wheelSel = G.player.weapon;
+    NV_HUD.showWheel(G, this.wheelSel);
+    NV_AUDIO.click();
+  },
+  closeWheel(G, apply) {
+    if (!this.wheelOpen) return;
+    this.wheelOpen = false;
+    NV_HUD.hideWheel(G);
+    if (apply && this.wheelSel !== G.player.weapon) {
+      this.switchWeapon(G, this.wheelSel);
+    }
+  },
+  wheelSelect(G, name) {
+    if (!this.wheelOpen || !NV_CONFIG.weapons[name]) return;
+    this.wheelSel = name;
+    NV_HUD.showWheel(G, this.wheelSel);
+    NV_AUDIO.click();
+  },
+  wheelCycle(G, dir) {
+    const order = ['pistol', 'smg'];
+    const i = order.indexOf(this.wheelSel);
+    this.wheelSelect(G, order[(i + dir + order.length) % order.length]);
+  },
 
   weaponDef(P) {
     const w = NV_CONFIG.weapons[P.weapon || 'pistol'] || NV_CONFIG.weapons.pistol;

@@ -15,8 +15,9 @@ const NV_POLICE = {
 
   update(G, dt) {
     // Wanted decays after 8 clean seconds: one star per 6 seconds.
+    // Kiki the lookout cools the heat off twice as fast.
     if (G.wanted > 0 && G.time - this.lastCrimeT > 8) {
-      this.heat -= dt * 16;
+      this.heat -= dt * 16 * NV_CREW.decayMult(G);
       if (this.heat <= 0) {
         G.wanted -= 1;
         this.heat = 100;
@@ -24,8 +25,9 @@ const NV_POLICE = {
       }
     }
     const playerPos = G.player.inCar ? G.player.car.group.position : G.player.pos;
-    // Cruisers: spawn up to one per star, chase and ram.
-    const wantCruisers = Math.min(G.wanted, NV_CONFIG.police.maxCruisers);
+    // Cruisers: spawn up to one per star, chase and ram. At five stars
+    // the city sends a fifth unit — the full dispatch.
+    const wantCruisers = Math.min(G.wanted + (G.wanted >= 5 ? 1 : 0), NV_CONFIG.police.maxCruisers + 1);
     while (this.cruisers.length < wantCruisers) {
       const car = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       const a = G.rng.range(0, Math.PI * 2);

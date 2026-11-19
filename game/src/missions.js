@@ -1,8 +1,12 @@
-// The story: eight jobs for Jax and V, each a small state machine with
-// phases, a beacon, objectives and dialog. Completing a job pays cash and
-// saves; failing one sends Jax back to the start of that job.
+// The story: ten jobs for Jax and V, each a small state machine with
+// phases, a beacon, objectives and dialog. Completing a job pays cash
+// (plus a district-standing bonus), earns respect, raises standing in
+// the district it happened in, and saves; failing one sends Jax back to
+// the start of that job. The last two jobs are staged set-pieces: the
+// four-phase Neon Heist and the Syndicate Finale against the boss.
 const NV_MISSIONS = {
   guards: [], v: null, courier: null, rival: null, truck: null,
+  gold: null, boss: null,
 
   startMission(G, idx) {
     const def = NV_CONFIG.missions[idx];
@@ -14,7 +18,9 @@ const NV_MISSIONS = {
     else if (def.id === 'm3') target = L.beachRoad;
     else if (def.id === 'm5') target = null; // terminals set below
     else if (def.id === 'm8') target = L.garage;
+    else if (def.id === 'm9') target = L.panel;
     G.mission = { def, phase: 'go', timer: 0, target };
+    if (def.id === 'm9') G.mission.phase = 'scout';
     if (target) G.world.setBeacon(target.x, target.z, 0xff2e88);
     if (def.id === 'm4') this.spawnCourier(G);
     if (def.id === 'm5') {
@@ -35,6 +41,7 @@ const NV_MISSIONS = {
       NV_POLICE.addWanted(G, 4);
     }
     if (def.id === 'm8') this.spawnTruck(G);
+    if (def.id === 'm10') this.spawnBoss(G);
     NV_HUD.banner(G, 'MISSION ' + (idx + 1) + ' — ' + def.name);
     NV_HUD.dialog(G, 'V: ' + def.brief, 6);
     NV_HUD.setObjective(G, def.brief);
@@ -89,6 +96,27 @@ const NV_MISSIONS = {
     G.cars.push(truck);
     this.truck = truck;
     NV_HUD.setObjective(G, 'Get in the payoff truck at the garage.');
+  },
+
+  // The boss's black-and-gold ride for the finale: it drives the same
+  // three checkpoints as the player, a little slower, and shoots back.
+  spawnBoss(G) {
+    const M = G.mission;
+    M.cps = [{ x: -400, z: -600 }, { x: 400, z: -600 }, { x: 400, z: 600 }];
+    M.cpIdx = 0;
+    const boss = NV_ENTITIES.makeCar(0x1a1a1a, 'boss');
+    boss.group.position.set(-400, 0, -560);
+    boss.yaw = 0;
+    boss.group.rotation.y = 0;
+    boss.glow.material.color.setHex(0xffd75e);
+    boss.group.userData.owner = { kind: 'car', ref: boss };
+    boss.cpIdx = 0;
+    G.scene.add(boss.group);
+    G.cars.push(boss);
+    this.boss = boss;
+    M.target = M.cps[0];
+    G.world.setBeacon(M.cps[0].x, M.cps[0].z, 0xffd75e);
+    NV_HUD.setObjective(G, 'Chase the boss: checkpoint 1 of 3. Get a car!');
   },
 
   // E key: context action for the current mission phase.
@@ -162,6 +190,48 @@ const NV_MISSIONS = {
         return true;
       }
     }
+    // m9 Neon Heist, phase 2: kill the plaza security panel.
+    if (M.def.id === 'm9' && M.phase === 'disable') {
+      const L = G.world.locations.panel;
+      if (Math.hypot(pp.x - L.x, pp.z - L.z) < 12 && !P.inCar) {
+        M.phase = 'channel';
+        M.channelT = 15;
+        NV_POLICE.addWanted(G, 1);
+        this.spawnGuards(G, 2, L.x, L.z);
+        G.world.setBeacon(L.x, L.z, 0x19c3ff);
+        NV_HUD.setObjective(G, 'Killing the plaza security — stay close! 15s.');
+        NV_HUD.dialog(G, 'V: Security is on to us — hold the panel!', 4);
+        return true;
+      }
+    }
+    // m9 Neon Heist, phase 3: grab the gold car.
+    if (M.def.id === 'm9' && M.phase === 'grab' && this.gold && !this.gold.wrecked) {
+      const c = this.gold.group.position;
+      if (Math.hypot(pp.x - c.x, pp.z - c.z) < 7 && !P.inCar) {
+        NV_MAIN.enterCar(G, this.gold);
+        M.phase = 'escape';
+        NV_POLICE.addWanted(G, 4);
+        const H = G.world.locations.hideout;
+        G.world.setBeacon(H.x, H.z, 0x39d353);
+        NV_HUD.setObjective(G, 'Four stars! Lose the heat at the Hideout.');
+        NV_HUD.dialog(G, 'V: The gold is ours — now disappear!', 5);
+        return true;
+      }
+    }
+    // m10 Finale, final phase: take the boss's car to the Marina.
+    if (M.def.id === 'm10' && M.phase === 'drive' && this.boss && !this.boss.wrecked) {
+      const c = this.boss.group.position;
+      if (Math.hypot(pp.x - c.x, pp.z - c.z) < 7 && !P.inCar) {
+        NV_MAIN.enterCar(G, this.boss);
+        M.phase = 'run';
+        NV_POLICE.addWanted(G, 5);
+        const B = G.world.locations.marina;
+        G.world.setBeacon(B.x, B.z, 0xffd75e);
+        NV_HUD.setObjective(G, 'Five stars! Deliver the boss\'s car to the Marina boat!');
+        NV_HUD.dialog(G, 'V: His own car, his own boat. Poetic. Drive!', 5);
+        return true;
+      }
+    }
     return false;
   },
 
@@ -178,7 +248,8 @@ const NV_MISSIONS = {
       }
     } else if (M.def.id === 'm2') {
       if (M.phase === 'hack') {
-        M.timer -= dt;
+        // V hacks 20% faster with her crew bonus.
+        M.timer -= dt * NV_CREW.channelRate(G);
         NV_HUD.setObjective(G, 'Protect V — hack in progress. ' + Math.ceil(Math.max(0, M.timer)) + 's left. V HP ' + Math.max(0, Math.ceil(this.v ? this.v.hp : 0)));
         // Security waves at 60s, 30s and 10s remaining.
         if (M.waves.length && M.timer <= M.waves[0]) {
@@ -255,7 +326,7 @@ const NV_MISSIONS = {
         const t = M.atms[M.atmIdx];
         const d = Math.hypot(pp.x - t.x, pp.z - t.z);
         if (!P.inCar && d < 12) {
-          M.channelT -= dt;
+          M.channelT -= dt * NV_CREW.channelRate(G);
           NV_HUD.setObjective(G, 'Draining terminal ' + (M.atmIdx + 1) + ' of 3 — ' + Math.ceil(Math.max(0, M.channelT)) + 's left.');
         } else {
           NV_HUD.setObjective(G, 'Draining terminal ' + (M.atmIdx + 1) + ' of 3 — stay close to the terminal!');
@@ -332,6 +403,121 @@ const NV_MISSIONS = {
         const B = G.world.locations.marina;
         if (P.inCar && Math.hypot(pp.x - B.x, pp.z - B.z) < 16) this.complete(G);
       }
+    } else if (M.def.id === 'm9') {
+      if (M.phase === 'scout') {
+        // Phase 1: reach the security panel on foot at Neon Plaza.
+        const L = G.world.locations.panel;
+        if (Math.hypot(pp.x - L.x, pp.z - L.z) < 12) {
+          M.phase = 'disable';
+          NV_HUD.setObjective(G, 'Panel found — press E to kill the plaza security.');
+          NV_HUD.dialog(G, 'V: That\'s the panel. Kill the security and the vault opens.', 5);
+        }
+      } else if (M.phase === 'channel') {
+        const L = G.world.locations.panel;
+        const d = Math.hypot(pp.x - L.x, pp.z - L.z);
+        if (!P.inCar && d < 12) {
+          M.channelT -= dt * NV_CREW.channelRate(G);
+          NV_HUD.setObjective(G, 'Killing the plaza security — ' + Math.ceil(Math.max(0, M.channelT)) + 's left. Stay close!');
+        } else {
+          NV_HUD.setObjective(G, 'Killing the plaza security — stay close to the panel!');
+        }
+        if (M.channelT <= 0) {
+          // Phase 3: the vault opens — a gold getaway car rolls out.
+          const gold = NV_ENTITIES.makeCar(0xffd75e, 'gold');
+          gold.group.position.set(80, 0, 80);
+          gold.yaw = Math.PI / 2;
+          gold.group.rotation.y = gold.yaw;
+          gold.glow.material.opacity = 0.55;
+          gold.group.userData.owner = { kind: 'car', ref: gold };
+          G.scene.add(gold.group);
+          G.cars.push(gold);
+          this.gold = gold;
+          M.phase = 'grab';
+          M.target = { x: 80, z: 80 };
+          G.world.setBeacon(80, 80, 0xffd75e);
+          NV_HUD.setObjective(G, 'The vault is open — grab the gold car!');
+          NV_HUD.dialog(G, 'V: There it is — the gold car. Take it!', 5);
+        }
+      } else if (M.phase === 'escape') {
+        if (this.gold && this.gold.wrecked) { this.fail(G, 'The gold car is wrecked.'); return; }
+        const H = G.world.locations.hideout;
+        if (P.inCar && Math.hypot(pp.x - H.x, pp.z - H.z) < 13) this.complete(G);
+      }
+    } else if (M.def.id === 'm10') {
+      if (M.phase === 'go') {
+        if (this.boss && this.boss.wrecked) { this.fail(G, 'The boss\'s car is wrecked — the Syndicate wins this one.'); return; }
+        const cp = M.cps[M.cpIdx];
+        if (Math.hypot(pp.x - cp.x, pp.z - cp.z) < 15) {
+          M.cpIdx += 1;
+          if (M.cpIdx >= 3) {
+            // Phase 2: the boss stops and his guards come out.
+            M.phase = 'showdown';
+            M.surviveT = 25;
+            if (this.boss) this.boss.speed = 0;
+            const bp = this.boss.group.position;
+            this.spawnGuards(G, 3, bp.x, bp.z);
+            M.target = { x: bp.x, z: bp.z };
+            G.world.setBeacon(bp.x, bp.z, 0xff5040);
+            NV_HUD.setObjective(G, 'Showdown — survive the boss\'s guards! 25s.');
+            NV_HUD.dialog(G, 'V: He\'s cornered — his guards are coming. Survive!', 5);
+            return;
+          }
+          const nt = M.cps[M.cpIdx];
+          M.target = nt;
+          G.world.setBeacon(nt.x, nt.z, 0xffd75e);
+          NV_HUD.setObjective(G, 'Checkpoint ' + (M.cpIdx + 1) + ' of 3 — stay ahead of the boss!');
+        }
+        // The boss drives the same checkpoints, a little slower than the rival.
+        if (this.boss && !this.boss.wrecked) {
+          const bcp = M.cps[this.boss.cpIdx];
+          const d = NV_ENTITIES.driveToward(this.boss, bcp.x, bcp.z, dt, 26, G.world.colliders, G.cars);
+          if (d < 12) {
+            this.boss.cpIdx += 1;
+            if (this.boss.cpIdx >= 3) {
+              this.fail(G, 'The boss beat you to the finish line.');
+              return;
+            }
+          }
+        }
+      } else if (M.phase === 'showdown') {
+        if (this.boss && this.boss.wrecked) { this.fail(G, 'The boss\'s car is wrecked — the Syndicate wins this one.'); return; }
+        M.surviveT -= dt;
+        NV_HUD.setObjective(G, 'Showdown — survive the boss\'s guards! ' + Math.ceil(Math.max(0, M.surviveT)) + 's left.');
+        // The boss's guards chase the player and shoot, like the m2 guards chase V.
+        for (let i = this.guards.length - 1; i >= 0; i -= 1) {
+          const gd = this.guards[i];
+          if (gd.hp <= 0) continue;
+          const vx = pp.x - gd.pos.x, vz = pp.z - gd.pos.z;
+          const d = Math.hypot(vx, vz);
+          const wantYaw = Math.atan2(-vz, vx);
+          let dy = wantYaw - gd.yaw;
+          while (dy > Math.PI) dy -= Math.PI * 2;
+          while (dy < -Math.PI) dy += Math.PI * 2;
+          gd.yaw += Math.max(-3.5 * dt, Math.min(3.5 * dt, dy));
+          const spd = d > 14 ? 7 : 2.5;
+          const nx = gd.pos.x + Math.cos(gd.yaw) * spd * dt;
+          const nz = gd.pos.z - Math.sin(gd.yaw) * spd * dt;
+          if (!NV_PHYSICS.hitsAny(nx, nz, 0.7, G.world.colliders)) { gd.pos.x = nx; gd.pos.z = nz; }
+          NV_ENTITIES.walkPerson(gd.mesh, gd.pos, gd.yaw, spd, dt);
+          gd.shootT -= dt;
+          if (d < 40 && gd.shootT <= 0 && !P.inCar) {
+            gd.shootT = 1.4;
+            NV_COMBAT.enemyShoot(G, gd.pos, 2.2, pp);
+          }
+        }
+        if (M.surviveT <= 0) {
+          M.phase = 'drive';
+          const bp = this.boss.group.position;
+          M.target = { x: bp.x, z: bp.z };
+          G.world.setBeacon(bp.x, bp.z, 0xffd75e);
+          NV_HUD.setObjective(G, 'He\'s done — take the boss\'s car!');
+          NV_HUD.dialog(G, 'V: The guards are down. Take his car and finish this.', 5);
+        }
+      } else if (M.phase === 'run') {
+        if (this.boss && this.boss.wrecked) { this.fail(G, 'The boss\'s car is wrecked.'); return; }
+        const B = G.world.locations.marina;
+        if (P.inCar && Math.hypot(pp.x - B.x, pp.z - B.z) < 16) this.complete(G);
+      }
     }
   },
 
@@ -353,18 +539,34 @@ const NV_MISSIONS = {
 
   complete(G) {
     const M = G.mission;
-    G.cash += M.def.reward;
+    // District standing pays a bonus on jobs in that district.
+    const mult = NV_CREW.payoutMult(G, M.def.district);
+    const pay = Math.round(M.def.reward * mult);
+    G.cash += pay;
     G.missionsDone += 1;
-    NV_SAVE.save(G);
+    // Respect + standing, and any crew member who just joined.
+    const unlocked = NV_CREW.award(G, M.def.district);
+    if (M.def.id === 'm5') {
+      // The vault chain drains three districts: each gains standing.
+      for (const d of ['plaza', 'garage', 'marina']) {
+        if (G.crew.standing[d] < 5) G.crew.standing[d] += 1;
+      }
+      NV_SAVE.save(G);
+    }
     NV_AUDIO.jingle();
-    NV_HUD.banner(G, 'MISSION COMPLETE  +$' + M.def.reward);
-    NV_HUD.dialog(G, 'V: That\'s one down. The Syndicate won\'t know what hit them.', 5);
+    NV_HUD.banner(G, 'MISSION COMPLETE  +$' + pay + (mult > 1 ? '  (+' + Math.round((mult - 1) * 100) + '% STANDING)' : ''));
+    let line = 'V: That\'s one down. The Syndicate won\'t know what hit them.';
+    if (unlocked.length) {
+      line = 'NEW CREW: ' + unlocked.map((m) => m.name + ' — ' + m.role).join(', ') + ' joined the AURA CREW!';
+      NV_AUDIO.crewJoin();
+    }
+    NV_HUD.dialog(G, line, 6);
     this.clearField(G);
     const doneId = M.def.id;
     G.mission = null;
     G.world.hideBeacon();
-    if (doneId === 'm8') { NV_MAIN.ending(G); return; }
-    NV_HUD.setObjective(G, G.missionsDone < 8 ? 'Press M for the next mission.' : 'All jobs done — free roam Aura City.');
+    if (doneId === 'm10') { NV_MAIN.ending(G); return; }
+    NV_HUD.setObjective(G, G.missionsDone < 10 ? 'Press M for the next mission.' : 'All jobs done — free roam Aura City.');
   },
 
   fail(G, reason) {
@@ -399,6 +601,18 @@ const NV_MISSIONS = {
       const i = G.cars.indexOf(this.truck);
       if (i >= 0) G.cars.splice(i, 1);
       this.truck = null;
+    }
+    if (this.gold) {
+      G.scene.remove(this.gold.group);
+      const i = G.cars.indexOf(this.gold);
+      if (i >= 0) G.cars.splice(i, 1);
+      this.gold = null;
+    }
+    if (this.boss) {
+      G.scene.remove(this.boss.group);
+      const i = G.cars.indexOf(this.boss);
+      if (i >= 0) G.cars.splice(i, 1);
+      this.boss = null;
     }
   },
 };

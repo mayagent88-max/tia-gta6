@@ -96,18 +96,38 @@ const NV_SHOTS = {
       NV_HUD.setObjective(G, 'Press M to start the first mission.');
       setCam(100, 170, 520, -40, 0, -150);
     } else if (shot === 'mission') {
-      // M2 hack in progress: V at the ATM, guards closing in.
-      NV_MISSIONS.startMission(G, 1);
-      const P = G.player;
-      P.pos.set(106, 0, -94);
-      P.yaw = Math.PI * 0.75;
-      P.camYaw = P.yaw;
-      NV_MISSIONS.tryInteract(G);
-      if (NV_MISSIONS.guards.length === 0) NV_MISSIONS.spawnGuards(G, 2);
-      if (G.mission) G.mission.timer = 62;
-      // A couple of bystanders near the ATM corner.
-      this.stageCrowd(G, [[80, -80, Math.PI / 2], [130, -120, -Math.PI / 2]], [[84, -84], [120, -112], [92, -116]]);
-      setCam(124, 7, -76, 100, 2, -100);
+      // M9 Neon Heist at four stars: the gold car is ours, guards close
+      // in, the weapon wheel is open — respect rank, crew and standing
+      // all on the HUD, the deepest single frame of the game.
+      G.crew.respect = 200;
+      G.crew.unlocked.lio = true;
+      G.crew.unlocked.mira = true;
+      NV_MISSIONS.startMission(G, 8);
+      const gold = NV_ENTITIES.makeCar(0xffd75e, 'gold');
+      gold.group.position.set(80, 0, 80);
+      gold.yaw = Math.PI / 2;
+      gold.group.rotation.y = gold.yaw;
+      gold.glow.material.opacity = 0.55;
+      gold.group.userData.owner = { kind: 'car', ref: gold };
+      G.scene.add(gold.group);
+      G.cars.push(gold);
+      NV_MISSIONS.gold = gold;
+      NV_MAIN.enterCar(G, gold);
+      G.mission.phase = 'escape';
+      NV_POLICE.addWanted(G, 4);
+      const H = G.world.locations.hideout;
+      G.world.setBeacon(H.x, H.z, 0x39d353);
+      NV_HUD.setObjective(G, 'Four stars! Lose the heat at the Hideout.');
+      NV_MISSIONS.spawnGuards(G, 2, 60, 60);
+      this.stageCrowd(G, [[60, 60, Math.PI / 2], [100, 100, -Math.PI / 2]], [[64, 64], [96, 64], [64, 96]]);
+      // Hold the weapon wheel open for the shot (the loop would close it
+      // when Tab is not held — G.shotWheel keeps it up). The camera sits
+      // close to the gold car and aims right of it, so the car fills the
+      // left third clear of the centred wheel.
+      G.shotWheel = true;
+      NV_COMBAT.openWheel(G);
+      NV_COMBAT.wheelSelect(G, 'smg');
+      setCam(89, 3.2, 89, 84, 1.5, 73);
     }
     setTimeout(() => { window.__shotReady = true; }, 2200);
     return true;
