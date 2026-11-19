@@ -82,6 +82,10 @@ const NV_SHOTS = {
         [-52, 694], [-38, 696], [-20, 693], [8, 695], [24, 694], [38, 696], [52, 693], [-8, 697],
         [-64, 700], [70, 700],
       ]);
+      // The cover frame shows the new HUD: armour bar, crew panel,
+      // stage chip (m1, stage 2/2) and the speedo on the AURA GT.
+      G.player.armour = 55;
+      G.mission = { def: { id: 'm1', name: 'FAST BREAK', stages: ['go', 'escape'] }, phase: 'escape', target: { x: -900, z: 500 } };
       G.world.setBeacon(-900, 500, 0x39d353); // Hideout: the objective, so the minimap marker points there
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
       setCam(10, 2.6, 752, -6, 1.2, 741);
@@ -132,6 +136,10 @@ const NV_SHOTS = {
       ]);
       // Fill the near-side grass between the camera and the avenue.
       G.world.addPlanter(-95, 20); G.world.addPlanter(-115, 22); G.world.addBench(-70, 18, Math.PI / 2);
+      // The chase frame shows the new HUD too: armour, crew panel,
+      // stage chip (m3, stage 2/2) and the speedo on the AURA GT.
+      G.player.armour = 72;
+      G.mission = { def: { id: 'm3', name: 'GOLDEN HOUR SCORE', stages: ['go', 'drive'] }, phase: 'drive', target: { x: -900, z: 500 } };
       G.world.setBeacon(-900, 500, 0x39d353);
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
       setCam(-84, 4, 14, -108, 1.5, 0);
@@ -167,6 +175,7 @@ const NV_SHOTS = {
       NV_MISSIONS.gold = gold;
       NV_MAIN.enterCar(G, gold);
       G.mission.phase = 'escape';
+      G.player.armour = 72;
       NV_POLICE.addWanted(G, 4);
       // The open weapon wheel pauses updatePlaying, so the police loop
       // never runs for this shot: place the chase units by hand so the

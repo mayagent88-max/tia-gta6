@@ -58,7 +58,7 @@ const NV_MAIN = {
   },
   resetRun(G) {
     const P = G.player;
-    P.hp = 100; P.weapon = 'pistol';
+    P.hp = 100; P.armour = 50; P.weapon = 'pistol';
     P.ammoBy = { fists: Infinity, pistol: NV_CONFIG.weapons.pistol.mag, smg: NV_CONFIG.weapons.smg.mag, ar: NV_CONFIG.weapons.ar.mag };
     P.ammo = P.ammoBy.pistol; P.reloadT = 0;
     P.pos.copy(G.world.locations.spawn);
@@ -67,6 +67,8 @@ const NV_MAIN = {
     P.mesh.group.visible = true;
     G.wanted = 0;
     G.garageOpen = false;
+    G.crewCds = {};
+    G.eyesOutT = 0;
     NV_HUD.hideGarage(G);
     NV_COMBAT.wheelOpen = false;
     NV_HUD.hideWheel(G);
@@ -131,6 +133,8 @@ function buildGame() {
   G.ownedCars = save.ownedCars || [];
   G.selectedOwned = 0;
   G.garageOpen = false;
+  G.crewCds = {};
+  G.eyesOutT = 0;
 
   // Player: Jax, orange shirt, dark pants.
   const person = NV_ENTITIES.makePerson(0xff5a3c, 0x222233);
@@ -138,7 +142,7 @@ function buildGame() {
   scene.add(person.group);
   G.player = {
     mesh: person, pos: person.group.position, yaw: -Math.PI / 2, camYaw: -Math.PI / 2,
-    camPitch: 0.12, hp: NV_CONFIG.player.hp, inCar: false, car: null,
+    camPitch: 0.12, hp: NV_CONFIG.player.hp, armour: 50, inCar: false, car: null,
     ammo: NV_CONFIG.player.magSize, reloadT: 0, shootT: 0, walkPhase: 0,
     lastHurtT: -99, lastShotT: -99, speed: 0,
   };
@@ -264,6 +268,12 @@ function updatePlaying(G, dt) {
   }
   if (I.consume('n')) NV_AUDIO.toggleMute();
   if (I.consume('r')) NV_HUD.banner(G, 'RADIO: ' + NV_AUDIO.cycleRadio());
+  // Crew abilities: Z V swap plates, X Lio quick fix, C Mira nitro
+  // surge, B Kiki eyes out. Each has its own cooldown.
+  if (I.consume('z')) NV_CREW.useAbility(G, 'v');
+  if (I.consume('x')) NV_CREW.useAbility(G, 'lio');
+  if (I.consume('c')) NV_CREW.useAbility(G, 'mira');
+  if (I.consume('b')) NV_CREW.useAbility(G, 'kiki');
   if (I.consume('1')) NV_COMBAT.switchWeapon(G, 'fists');
   if (I.consume('2')) NV_COMBAT.switchWeapon(G, 'pistol');
   if (I.consume('3')) NV_COMBAT.switchWeapon(G, 'smg');
@@ -327,6 +337,8 @@ function updatePlaying(G, dt) {
   NV_POLICE.update(G, dt);
   NV_COMBAT.update(G, dt);
   NV_MISSIONS.update(G, dt);
+  NV_CREW.tick(G, dt);
+  NV_WORLD.checkArmourPickup(G, dt);
 }
 
 function updateCamera(G, dt) {

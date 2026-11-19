@@ -8,6 +8,31 @@ const NV_MISSIONS = {
   guards: [], v: null, courier: null, rival: null, truck: null,
   gold: null, boss: null,
 
+  // Which stage the current job is on: { n, total } from the mission's
+  // stages list (checkpoints and terminals count as their own stages).
+  // Null when no mission is running.
+  stageOf(G) {
+    const M = G.mission;
+    if (!M) return null;
+    const stages = M.def.stages || [];
+    const total = stages.length || 1;
+    if (M.def.id === 'm5') {
+      return { n: M.phase === 'go' ? 1 : 2 + (M.atmIdx || 0), total };
+    }
+    if (M.def.id === 'm6') {
+      return { n: Math.min(4, (M.cpIdx || 0) + 1), total };
+    }
+    const i = stages.indexOf(M.phase);
+    return { n: i >= 0 ? i + 1 : 1, total };
+  },
+
+  // "STAGE 3/5 · NEON HEIST" — the chip the HUD shows while a job runs.
+  stageText(G) {
+    const s = this.stageOf(G);
+    if (!s || !G.mission) return '';
+    return 'STAGE ' + s.n + '/' + s.total + ' · ' + G.mission.def.name;
+  },
+
   startMission(G, idx) {
     const def = NV_CONFIG.missions[idx];
     if (!def) return false;
@@ -42,7 +67,8 @@ const NV_MISSIONS = {
     }
     if (def.id === 'm8') this.spawnTruck(G);
     if (def.id === 'm10') this.spawnBoss(G);
-    NV_HUD.banner(G, 'MISSION ' + (idx + 1) + ' — ' + def.name);
+    const total = (def.stages || []).length || 1;
+    NV_HUD.banner(G, 'MISSION ' + (idx + 1) + ' — ' + def.name + ' · STAGE 1/' + total);
     NV_HUD.dialog(G, 'V: ' + def.brief, 6);
     NV_HUD.setObjective(G, def.brief);
     NV_AUDIO.pickup();

@@ -101,6 +101,67 @@ const NV_CREW = {
     return gained;
   },
 
+  // Usable crew abilities (keys Z/X/C/B, one per member, with cooldowns).
+  // Each member's ability is a real tool in a chase, not just a passive:
+  // V swaps the plates (a star drops), Lio patches the car on the spot,
+  // Mira fires a nitro surge, Kiki puts eyes on every unit.
+  abilities: {
+    v: { name: 'SWAP PLATES', key: 'z', cd: 45, desc: 'Drop 1 wanted star' },
+    lio: { name: 'QUICK FIX', key: 'x', cd: 30, desc: 'Repair the car +25 HP' },
+    mira: { name: 'NITRO SURGE', key: 'c', cd: 40, desc: 'Nitro full + 6s boost' },
+    kiki: { name: 'EYES OUT', key: 'b', cd: 35, desc: 'Mark police on map' },
+  },
+
+  // Cooldowns tick down while playing (G.crewCds, seconds left per key).
+  tick(G, dt) {
+    if (!G.crewCds) G.crewCds = {};
+    for (const k of Object.keys(G.crewCds)) {
+      G.crewCds[k] = Math.max(0, G.crewCds[k] - dt);
+    }
+    if (G.eyesOutT > 0) G.eyesOutT = Math.max(0, G.eyesOutT - dt);
+  },
+
+  // Fire a crew ability. Returns true when it went off (cooldown starts),
+  // false when it fizzled (locked, cooling down, or no car to use it on).
+  useAbility(G, key) {
+    const def = this.abilities[key];
+    if (!def || !this.has(G, key)) return false;
+    const cds = G.crewCds || (G.crewCds = {});
+    if ((cds[key] || 0) > 0) {
+      NV_HUD.banner(G, def.name + ' — ' + Math.ceil(cds[key]) + 's COOLDOWN');
+      return false;
+    }
+    const P = G.player;
+    if (key === 'v') {
+      if (G.wanted <= 0) { NV_HUD.banner(G, 'SWAP PLATES — NO HEAT TO DROP'); return false; }
+      G.wanted -= 1;
+      NV_POLICE.heat = 100;
+      if (G.wanted === 0) NV_AUDIO.setSiren(false);
+      NV_HUD.banner(G, 'SWAP PLATES — HEAT DOWN TO ' + G.wanted + ' STAR' + (G.wanted === 1 ? '' : 'S'));
+    } else if (key === 'lio') {
+      if (P.inCar && P.car) {
+        const car = P.car;
+        car.hp = Math.min(car.hpMax || 100, car.hp + 50);
+        P.hp = Math.min(100, P.hp + 25);
+        NV_HUD.banner(G, 'QUICK FIX — CAR PATCHED UP');
+      } else {
+        P.hp = Math.min(100, P.hp + 25);
+        NV_HUD.banner(G, 'QUICK FIX — PATCHED UP +25 HP');
+      }
+    } else if (key === 'mira') {
+      if (!P.inCar || !P.car) { NV_HUD.banner(G, 'NITRO SURGE — NEED A CAR FIRST'); return false; }
+      P.car.nitro = 100;
+      P.car.surgeT = 6;
+      NV_HUD.banner(G, 'NITRO SURGE — HOLD SHIFT AND FLY');
+    } else if (key === 'kiki') {
+      G.eyesOutT = 20;
+      NV_HUD.banner(G, 'EYES OUT — KIKI HAS EYES ON EVERY UNIT');
+    }
+    cds[key] = def.cd;
+    NV_AUDIO.pickup();
+    return true;
+  },
+
   // A short line for the HUD: rank, respect and the crew on board.
   hudLine(G) {
     const crew = G.crew || this.fresh();

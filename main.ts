@@ -11,14 +11,19 @@
 // rival-crew checkpoint race, a four-star helicopter escape, the final syndicate payoff,
 // a four-phase Neon Heist and the Syndicate Finale against the boss — with traffic,
 // pedestrians, a wanted level, police cruisers, roadblocks and a news helicopter with a
-// searchlight, the AURA CREW (respect ranks, crew members with passive bonuses, district
-// standing that pays a bonus on jobs), owned cars Jax keeps in his garage with per-car
-// engine/armor/nitro upgrades, a three-station synth radio, four weapons (fists, pistol,
-// SMG, AR-9) with a hold-Tab weapon wheel, a live KPD dispatch panel naming every
-// responding unit, character portraits in the dialog box, street props (market stalls,
-// planters, benches, barriers, beach umbrellas) packing the plaza and beach road, combat,
-// a HUD with a live minimap (bright roads, buildings, police, mission marker), a start
-// screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
+// searchlight, the AURA CREW (respect ranks, crew members with passive bonuses
+// AND usable abilities on Z/X/C/B with cooldowns, district standing that pays
+// a bonus on jobs), owned cars Jax keeps in his garage with per-car
+// engine/armor/nitro upgrades, a three-station synth radio, four weapons (fists,
+// pistol, SMG, AR-9) with a hold-Tab weapon wheel, a live KPD dispatch panel
+// naming every responding unit, character portraits in the dialog box, street
+// props (market stalls, planters, benches, barriers, beach umbrellas) packing
+// the plaza and beach road, combat, a HUD with a live minimap (bright roads,
+// buildings, police, mission marker), an armour vest that absorbs damage first
+// (blue bar beside HP, refilled at the garage or from vest pickups), a live
+// speedo with the car name and damage %, a mission stage counter (STAGE 2/4)
+// on the HUD, textured ground (sidewalk tiles, crosswalks, plaza checker,
+// beach towels), a start screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
 // in screenshots/ (the first by name is the cover) and run it.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.

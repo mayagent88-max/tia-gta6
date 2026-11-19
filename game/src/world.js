@@ -2,9 +2,9 @@
 // an ocean, a marina, and the story landmarks. Everything is built from
 // boxes, instanced meshes and canvas textures — no downloaded models.
 const NV_WORLD = {
-  colliders: [], buildings: [], roadPoints: [],
+  colliders: [], buildings: [], roadPoints: [], armourPickups: [],
   locations: {}, beacon: null, oceanTex: null, sunMesh: null,
-  sunLight: null, hemi: null, sunset: false, time: 0,
+  sunLight: null, hemi: null, sunset: false, time: 0, groundCanvas: null,
 
   build(scene, rng) {
     this.sceneRef = scene;
@@ -54,6 +54,76 @@ const NV_WORLD = {
       g.beginPath(); g.moveTo(0, pz(z)); g.lineTo(gw, pz(z)); g.stroke();
     }
     g.setLineDash([]);
+    // --- Ground detail, so an overview reads as a city, not flat colour:
+    // sidewalk tile grids, zebra crosswalks at every intersection, a
+    // checker plaza, solid road edge lines, grass speckle and beach dots.
+    const onRoad = (x, z) => {
+      const rx = ((x + 1000) % W.roadGap + W.roadGap) % W.roadGap;
+      const rz = ((z + 800) % W.roadGap + W.roadGap) % W.roadGap;
+      return rx < 12 || rx > W.roadGap - 12 || rz < 12 || rz > W.roadGap - 12;
+    };
+    // Grass speckle: darker and lighter tufts in the gaps between pads.
+    for (let i = 0; i < 700; i += 1) {
+      const x = rng.range(-1150, 1150), z = rng.range(-850, 690);
+      if (onRoad(x, z)) continue;
+      if (Math.abs(x) < 95 && Math.abs(z) < 95) continue;
+      g.fillStyle = rng.chance(0.5) ? 'rgba(20,60,20,0.5)' : 'rgba(90,140,70,0.5)';
+      g.fillRect(px(x), pz(z), 3, 3);
+    }
+    // Sidewalk tiles on every block pad.
+    g.strokeStyle = 'rgba(255,255,255,0.10)';
+    g.lineWidth = 1;
+    for (let bx = -1100; bx <= 1100; bx += W.roadGap) {
+      for (let bz = -800; bz <= 800; bz += W.roadGap) {
+        if (bz >= W.beachZ - 100) continue;
+        for (let t = 30; t < W.blockSize; t += 30) {
+          g.beginPath(); g.moveTo(px(bx + 12 + t), pz(bz + 12)); g.lineTo(px(bx + 12 + t), pz(bz + W.blockSize)); g.stroke();
+          g.beginPath(); g.moveTo(px(bx + 12), pz(bz + 12 + t)); g.lineTo(px(bx + W.blockSize), pz(bz + 12 + t)); g.stroke();
+        }
+      }
+    }
+    // Zebra crosswalks at every intersection, both directions.
+    g.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let x = -1000; x <= 1000; x += W.roadGap) {
+      for (let z = -800; z <= 800; z += W.roadGap) {
+        for (let s = -8; s <= 8; s += 4) {
+          g.fillRect(px(x - 9), pz(z + s - 1.2), px(x + 9) - px(x - 9), pz(z + s + 1.2) - pz(z + s - 1.2));
+          g.fillRect(px(x + s - 1.2), pz(z - 9), px(x + s + 1.2) - px(x + s - 1.2), pz(z + 9) - pz(z - 9));
+        }
+      }
+    }
+    // Plaza checker tiles.
+    for (let tx = 0; tx < 12; tx += 1) {
+      for (let tz = 0; tz < 12; tz += 1) {
+        if ((tx + tz) % 2) continue;
+        g.fillStyle = '#755f85';
+        g.fillRect(px(-90 + tx * 15), pz(-90 + tz * 15), px(-75 + tx * 15) - px(-90 + tx * 15), pz(-75 + tz * 15) - pz(-90 + tz * 15));
+      }
+    }
+    // Solid white edge lines along every road.
+    g.strokeStyle = 'rgba(255,255,255,0.45)';
+    g.lineWidth = 2;
+    for (let x = -1000; x <= 1000; x += W.roadGap) {
+      for (const e of [-9, 9]) {
+        g.beginPath(); g.moveTo(px(x + e), 0); g.lineTo(px(x + e), pz(W.beachZ)); g.stroke();
+      }
+    }
+    for (let z = -800; z <= 800; z += W.roadGap) {
+      for (const e of [-9, 9]) {
+        g.beginPath(); g.moveTo(0, pz(z + e)); g.lineTo(gw, pz(z + e)); g.stroke();
+      }
+    }
+    // Beach speckles and bright towels on the sand.
+    for (let i = 0; i < 200; i += 1) {
+      const x = rng.range(-1150, 1150), z = rng.range(705, 880);
+      g.fillStyle = rng.chance(0.5) ? 'rgba(180,140,90,0.6)' : 'rgba(240,220,180,0.6)';
+      g.fillRect(px(x), pz(z), 3, 3);
+    }
+    for (const [tx, tz, col] of [[-700, 760, '#ff2e88'], [-200, 800, '#19c3ff'], [300, 760, '#ffd75e'], [700, 820, '#39d353'], [100, 780, '#ff7a2e']]) {
+      g.fillStyle = col;
+      g.fillRect(px(tx), pz(tz), px(tx + 14) - px(tx), 6);
+    }
+    this.groundCanvas = gc;
     const groundTex = new THREE.CanvasTexture(gc);
     groundTex.encoding = THREE.sRGBEncoding;
     groundTex.anisotropy = 4;
@@ -340,6 +410,25 @@ const NV_WORLD = {
       this.decorCars.push(car);
     }
 
+    // --- Armour vest pickups: glowing cyan crates at the garage yard
+    // and the Hideout that refill Jax's armour vest. They respawn 30s
+    // after being taken.
+    this.armourPickups = [];
+    const addArmourPickup = (x, z) => {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x19c3ff, emissive: 0x19c3ff, emissiveIntensity: 0.9, roughness: 0.4 }));
+      crate.position.set(x, 0.8, z);
+      scene.add(crate);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.2, 24),
+        new THREE.MeshBasicMaterial({ color: 0x19c3ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(x, 0.12, z);
+      scene.add(ring);
+      this.armourPickups.push({ x, z, mesh: crate, ring, taken: false, respawnT: 0 });
+    };
+    addArmourPickup(-660, -440);
+    addArmourPickup(-860, 470);
+
     // Sun disc low on the western horizon.
     this.sunMesh = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshBasicMaterial({ color: 0xffb347, fog: false }));
     this.sunMesh.position.set(-1100, 150, 200);
@@ -404,6 +493,34 @@ const NV_WORLD = {
     box(0.3, 0.6, 0.9, 0x33333d, x - 1.3, 0.3, z, ry);
     box(0.3, 0.6, 0.9, 0x33333d, x + 1.3, 0.3, z, ry);
     this.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: z - 0.6, maxZ: z + 0.6 });
+  },
+
+  // Walk over a vest pickup with a damaged vest to refill the armour
+  // to 100. Taken crates respawn after 30 seconds.
+  checkArmourPickup(G, dt) {
+    const P = G.player;
+    if (!P || !this.armourPickups) return;
+    const pp = P.inCar ? P.car.group.position : P.pos;
+    for (const pk of this.armourPickups) {
+      if (pk.taken) {
+        pk.respawnT -= dt;
+        if (pk.respawnT <= 0) {
+          pk.taken = false;
+          pk.mesh.visible = true;
+          pk.ring.visible = true;
+        }
+        continue;
+      }
+      if ((P.armour || 0) < 100 && Math.hypot(pp.x - pk.x, pp.z - pk.z) < 4) {
+        P.armour = 100;
+        pk.taken = true;
+        pk.respawnT = 30;
+        pk.mesh.visible = false;
+        pk.ring.visible = false;
+        NV_HUD.banner(G, 'ARMOUR RESTORED — VEST AT 100');
+        NV_AUDIO.pickup();
+      }
+    }
   },
 
   setBeacon(x, z, color) {

@@ -221,10 +221,16 @@ const NV_COMBAT = {
     }
   },
 
+  // Damage hits the armour vest first (0-100, blue bar), and only the
+  // rest reaches Jax's health. Armour never regenerates on its own: it
+  // comes back from the vest pickups in the world or from buying an
+  // ARMOR upgrade at the garage.
   hurtPlayer(G, dmg, fromPos) {
     const P = G.player;
     if (G.screen !== 'playing' || P.hp <= 0) return;
-    P.hp -= dmg;
+    const absorbed = Math.min(P.armour || 0, dmg);
+    P.armour = (P.armour || 0) - absorbed;
+    P.hp -= (dmg - absorbed);
     P.lastHurtT = G.time;
     G.shake = Math.min(1, G.shake + 0.25);
     if (P.hp <= 0) { P.hp = 0; NV_MAIN.wasted(G); }

@@ -10,6 +10,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #hpbar { width: 170px; height: 14px; background: #222; border-radius: 7px; margin-top: 6px; position: relative; overflow: hidden; }
 #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg, #39d353, #7CFC00); border-radius: 7px; }
 #hptext { position: absolute; right: 6px; top: 0; font-size: 11px; line-height: 14px; color: #fff; font-weight: 700; }
+#armbar { width: 170px; height: 14px; background: #222; border-radius: 7px; margin-top: 4px; position: relative; overflow: hidden; }
+#armfill { height: 100%; width: 50%; background: linear-gradient(90deg, #1976d2, #19c3ff); border-radius: 7px; }
+#armtext { position: absolute; right: 6px; top: 0; font-size: 11px; line-height: 14px; color: #fff; font-weight: 700; }
 #ammo { font-size: 13px; font-weight: 700; margin-top: 6px; color: #ffd75e; letter-spacing: 1px; }
 #weapons { margin-top: 6px; }
 .wslot { display: inline-block; font-size: 11px; font-weight: 700; color: #bbb; background: #222; border: 1px solid #444; border-radius: 4px; padding: 2px 6px; margin-right: 5px; }
@@ -19,6 +22,13 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #upgrades { font-size: 11px; font-weight: 700; margin-top: 6px; color: #9a8fd6; letter-spacing: 1px; }
 #respect { font-size: 11px; font-weight: 700; margin-top: 4px; color: #39d353; letter-spacing: 1px; }
 #district { font-size: 11px; font-weight: 700; margin-top: 4px; color: #7ee7ff; letter-spacing: 1px; }
+#crew-panel { margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.18); padding-top: 5px; }
+.crow { font-size: 11px; font-weight: 700; letter-spacing: 1px; line-height: 1.7; color: #e8e8e8; }
+.crow .ckey { display: inline-block; background: #ff2e88; border-radius: 3px; padding: 0 5px; margin-right: 5px; color: #fff; }
+.crow .cname { color: #ffd75e; }
+.crow .cstate { float: right; color: #39d353; }
+.crow.cd .cstate { color: #999; }
+.crow .cdesc { color: #bdbdbd; font-weight: 400; }
 #keep-prompt { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(25,195,255,0.85); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; }
 #wheel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(5,2,16,0.85); border: 2px solid #ff2e88; border-radius: 12px; padding: 18px 22px; text-align: center; }
 #wheel-title { font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #ffd75e; margin-bottom: 12px; }
@@ -29,7 +39,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 .wheelslot.on { border-color: #ffd75e; background: #3a2f10; }
 .wheelslot.on b { color: #ffd75e; }
 #radio { font-size: 13px; font-weight: 700; color: #19c3ff; margin-top: 4px; text-align: right; }
-#dispatch { position: absolute; left: 14px; top: 245px; background: rgba(0,0,0,0.6); border-left: 4px solid #4aa8ff; border-radius: 6px; padding: 8px 12px; min-width: 250px; }
+#dispatch { position: absolute; left: 14px; top: 330px; background: rgba(0,0,0,0.6); border-left: 4px solid #4aa8ff; border-radius: 6px; padding: 8px 12px; min-width: 250px; }
 .dhead { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #4aa8ff; margin-bottom: 5px; }
 .drow { display: flex; font-size: 12px; font-weight: 700; line-height: 1.7; }
 .dcall { color: #fff; width: 74px; }
@@ -48,6 +58,12 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; f
 #stars { font-size: 26px; letter-spacing: 4px; color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
 #stars .off { color: #555; text-shadow: none; }
 #objective { position: absolute; left: 14px; bottom: 14px; max-width: 460px; background: rgba(0,0,0,0.6); border-left: 4px solid #ff2e88; border-radius: 6px; padding: 10px 14px; font-size: 15px; font-weight: 700; }
+#stage { position: absolute; left: 14px; bottom: 76px; background: rgba(255,46,136,0.9); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #fff; }
+#speedo { position: absolute; right: 14px; bottom: 248px; text-align: right; background: rgba(0,0,0,0.55); border-radius: 8px; padding: 8px 14px; }
+#speed { font-size: 42px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.35); }
+#speedunit { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #ffd75e; }
+#carname { font-size: 13px; font-weight: 800; letter-spacing: 1px; color: #19c3ff; margin-top: 4px; }
+#cardmg { font-size: 12px; font-weight: 700; color: #ff8fb8; }
 #dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(10,5,30,0.85); border: 1px solid #ff2e88; border-radius: 8px; padding: 10px 16px; font-size: 16px; max-width: 620px; text-align: left; }
 #dialog-face { width: 64px; height: 64px; border-radius: 8px; flex: none; }
 #dialog-body { min-width: 0; }

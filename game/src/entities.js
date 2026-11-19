@@ -145,11 +145,15 @@ const NV_ENTITIES = {
       if (accelIn > 0) car.speed += C.accel * h;
       else if (accelIn < 0) car.speed -= (car.speed > 0.5 ? C.brake : C.accel * 0.7) * h;
       else car.speed -= car.speed * 1.2 * h;
-      // Nitro: hold Shift while driving with a charged meter.
+      // Nitro: hold Shift while driving with a charged meter. Mira's
+      // NITRO SURGE (car.surgeT) fires the same boost without an owned
+      // nitro upgrade, and never drains the meter while it lasts.
+      const surging = (car.surgeT || 0) > 0;
+      if (surging) car.surgeT = Math.max(0, car.surgeT - h);
       let cap = topSpeed;
-      if (upg.nitro > 0 && input.keys.shift && car.nitro > 0 && accelIn > 0) {
+      if ((upg.nitro > 0 || surging) && input.keys.shift && car.nitro > 0 && accelIn > 0) {
         cap = topSpeed * 1.45;
-        car.nitro = Math.max(0, car.nitro - 34 * h);
+        if (!surging) car.nitro = Math.max(0, car.nitro - 34 * h);
         car.boosting = true;
       } else {
         car.boosting = false;
@@ -217,6 +221,21 @@ const NV_ENTITIES = {
     car.wheels.forEach((w) => { w.rotation.z = car.speed * 0.06; });
     NV_PHYSICS.clampWorld(car.group.position, 8);
     return dist;
+  },
+
+  // Display name for the speedo: owned cars carry their garage name,
+  // mission and police cars have their own names, street cars take one
+  // from the config list by paint colour.
+  carDisplayName(car) {
+    if (car.owned) return car.owned.name;
+    const names = {
+      prototype: 'AURA GT', gold: 'GOLD STREAKER', boss: 'SYNDICATE LIMO',
+      payoff: 'PAYOFF TRUCK', police: 'KPD CRUISER', courier: 'COURIER VAN',
+      rival: 'RIVAL GT',
+    };
+    if (names[car.kind]) return names[car.kind];
+    const list = NV_CONFIG.carNames;
+    return list[Math.abs(car.color || 0) % list.length];
   },
 
   // Walk a person mesh with a swing cycle; pos is a THREE.Vector3.

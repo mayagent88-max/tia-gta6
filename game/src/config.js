@@ -43,51 +43,61 @@ const NV_CONFIG = {
   missions: [
     {
       id: 'm1', name: 'FAST BREAK', district: 'garage',
+      stages: ['go', 'escape'],
       brief: 'Steal the AURA GT prototype from the garage, then lose the heat at the Hideout.',
       reward: 2500,
     },
     {
       id: 'm2', name: 'DATA BREACH', district: 'plaza',
+      stages: ['go', 'hack'],
       brief: 'Protect V while she hacks the Central ATM. Survive 90 seconds of security waves.',
       reward: 4000,
     },
     {
       id: 'm3', name: 'GOLDEN HOUR SCORE', district: 'beach',
+      stages: ['go', 'drive'],
       brief: 'Sunset escape: drive the beach road to the Marina boat while the heli hunts you.',
       reward: 7500,
     },
     {
       id: 'm4', name: 'COURIER INTERCEPT', district: 'beach',
+      stages: ['go', 'deliver'],
       brief: 'A rival courier is running Syndicate cash down the beach road. Grab the package and drop it at Neon Plaza.',
       reward: 3500,
     },
     {
       id: 'm5', name: 'VAULT CHAIN', district: 'mixed',
+      stages: ['go', 'terminal 1', 'terminal 2', 'terminal 3'],
       brief: 'Drain three vault terminals across the city — Central ATM, garage yard, marina dock. Hold E at each one.',
       reward: 5000,
     },
     {
       id: 'm6', name: 'RIVAL RACE', district: 'plaza',
+      stages: ['checkpoint 1', 'checkpoint 2', 'checkpoint 3', 'checkpoint 4'],
       brief: 'A rival crew driver challenges you to a street race: four checkpoints, first one there wins. Get a car.',
       reward: 5500,
     },
     {
       id: 'm7', name: 'SKYLINE GETAWAY', district: 'beach',
+      stages: ['go', 'run'],
       brief: 'Four stars and nowhere to hide. Survive 60 seconds of heat, then reach the Hideout.',
       reward: 6500,
     },
     {
       id: 'm8', name: 'THE PAYOFF', district: 'marina',
+      stages: ['go', 'drive'],
       brief: 'The final job: drive the payoff truck to the Marina boat under five stars. Do not lose the truck.',
       reward: 10000,
     },
     {
       id: 'm9', name: 'NEON HEIST', district: 'plaza',
+      stages: ['scout', 'disable', 'channel', 'grab', 'escape'],
       brief: 'A four-phase heist at Neon Plaza: scout the panel, kill the security, grab the gold car and run at four stars.',
       reward: 8000,
     },
     {
       id: 'm10', name: 'SYNDICATE FINALE', district: 'marina',
+      stages: ['go', 'showdown', 'drive', 'run'],
       brief: 'The boss himself. Chase his car through three checkpoints, take down his guards, and deliver his ride to the Marina.',
       reward: 12000,
     },

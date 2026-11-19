@@ -114,6 +114,8 @@ const NV_GARAGE = {
     if (G.cash < cost) { NV_HUD.garageNote(G, 'Not enough cash — $' + cost + ' needed.'); return false; }
     G.cash -= cost;
     owned.upgrades[key] = (owned.upgrades[key] || 0) + 1;
+    // An ARMOR upgrade plates the car and refills Jax's vest to full.
+    if (key === 'armor') G.player.armour = 100;
     // Apply at once to the car Jax is sitting in, when it is this one.
     if (G.player.inCar && G.player.car && G.player.car.owned === owned) {
       NV_MAIN.applyUpgrades(G, G.player.car);

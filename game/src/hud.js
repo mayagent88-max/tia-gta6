@@ -20,36 +20,93 @@ const NV_HUD = {
     if (!c) return;
     const ctx = c.getContext('2d');
     const p = this.portraits[key] || this.portraits.jax;
-    ctx.fillStyle = '#1a1030'; ctx.fillRect(0, 0, 64, 64);
-    // Shoulders / shirt.
-    ctx.fillStyle = key === 'v' ? '#19c3ff' : key === 'jax' ? '#ff5a3c' : '#33334a';
-    ctx.fillRect(8, 50, 48, 14);
-    // Face.
+    const shirt = key === 'v' ? '#19c3ff' : key === 'jax' ? '#ff5a3c' : key === 'mira' ? '#b06ae8' : key === 'lio' ? '#ff7a2e' : key === 'kiki' ? '#39d353' : '#33334a';
+    // Backdrop: a soft radial glow in the member's colour.
+    const grad = ctx.createRadialGradient(32, 30, 4, 32, 32, 48);
+    grad.addColorStop(0, shirt);
+    grad.addColorStop(1, '#101018');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+    // Shoulders / shirt with a pale collar line.
+    ctx.fillStyle = shirt;
+    ctx.beginPath();
+    ctx.moveTo(6, 64);
+    ctx.quadraticCurveTo(12, 46, 32, 44);
+    ctx.quadraticCurveTo(52, 46, 58, 64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(30, 46, 4, 18);
+    // Neck + face, with a shaded cheek.
     ctx.fillStyle = p.skin;
-    ctx.beginPath(); ctx.roundRect(14, 12, 36, 40, 8); ctx.fill();
-    // Hair.
+    ctx.fillRect(28, 38, 8, 8);
+    ctx.beginPath();
+    ctx.ellipse(32, 26, 13, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(40, 28, 6, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair, drawn per character.
     ctx.fillStyle = p.hair;
     if (key === 'mira') {
-      ctx.fillRect(10, 8, 44, 16); ctx.fillRect(10, 8, 8, 34); ctx.fillRect(46, 8, 8, 34);
+      ctx.beginPath(); ctx.ellipse(32, 14, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(47, 32, 4, 10, 0.3, 0, Math.PI * 2); ctx.fill(); // ponytail
     } else if (key === 'lio') {
-      ctx.fillRect(12, 8, 40, 10);
+      ctx.beginPath(); ctx.ellipse(32, 14, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#c98d5a'; ctx.fillRect(18, 44, 28, 8); // beard
+    } else if (key === 'kiki') {
+      ctx.beginPath(); ctx.arc(19, 15, 7, 0, Math.PI * 2); ctx.arc(45, 15, 7, 0, Math.PI * 2); ctx.fill();
     } else {
-      ctx.fillRect(12, 8, 40, 12);
+      ctx.beginPath();
+      ctx.moveTo(18, 28);
+      ctx.quadraticCurveTo(19, 8, 32, 8);
+      ctx.quadraticCurveTo(45, 8, 46, 28);
+      ctx.lineTo(42, 16);
+      ctx.quadraticCurveTo(32, 12, 22, 16);
+      ctx.closePath();
+      ctx.fill();
     }
-    // Eyes + mouth.
-    ctx.fillStyle = '#111';
-    ctx.fillRect(22, 30, 5, 6); ctx.fillRect(37, 30, 5, 6);
-    ctx.fillStyle = '#7a3a3a'; ctx.fillRect(27, 44, 10, 2);
-    // Accessories: V's headset, Kiki's goggles.
+    // Eyes: white, dark iris, eyebrow above each.
+    for (const ex of [26, 38]) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(ex, 24, 3.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(ex, 24, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.fillRect(ex - 3, 18.5, 6, 1);
+    }
+    // Nose + mouth.
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(32, 27); ctx.lineTo(31, 31); ctx.stroke();
+    ctx.fillStyle = '#7a3a3a';
+    ctx.fillRect(28, 35, 8, 2);
+    // Per-character accessory.
     if (key === 'v') {
+      ctx.strokeStyle = '#19c3ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(32, 24, 14, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
       ctx.fillStyle = '#19c3ff';
-      ctx.fillRect(12, 26, 4, 12); ctx.fillRect(48, 26, 4, 12); ctx.fillRect(12, 26, 40, 3);
+      ctx.fillRect(17, 22, 3, 6); ctx.fillRect(44, 22, 3, 6);
+    }
+    if (key === 'lio') {
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+      for (const ex of [26, 38]) { ctx.beginPath(); ctx.arc(ex, 24, 4.2, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(30, 24); ctx.lineTo(34, 24); ctx.stroke();
+    }
+    if (key === 'mira') {
+      ctx.fillStyle = '#e8304f';
+      ctx.fillRect(19, 13, 26, 4);
+      ctx.beginPath(); ctx.moveTo(45, 14); ctx.lineTo(51, 12); ctx.lineTo(50, 18); ctx.closePath(); ctx.fill();
     }
     if (key === 'kiki') {
-      ctx.strokeStyle = '#39d353'; ctx.lineWidth = 2;
-      ctx.strokeRect(19, 27, 11, 9); ctx.strokeRect(34, 27, 11, 9);
+      ctx.fillStyle = '#ffd75e';
+      ctx.beginPath(); ctx.arc(32, 16, 12, Math.PI, 0); ctx.fill();
+      ctx.fillRect(20, 14, 24, 3);
     }
+    // Accent bar at the bottom.
+    ctx.fillStyle = shirt;
+    ctx.fillRect(0, 60, 64, 4);
   },
 
   init() {
@@ -60,6 +117,10 @@ const NV_HUD = {
       upgrades: $('upgrades'), radio: $('radio'),
       respect: $('respect'), district: $('district'),
       stars: $('stars'), objective: $('objective'),
+      armfill: $('armfill'), armtext: $('armtext'),
+      crewpanel: $('crew-panel'),
+      stage: $('stage'),
+      speedo: $('speedo'), speed: $('speed'), carname: $('carname'), cardmg: $('cardmg'),
       dialog: $('dialog'), face: $('dialog-face'), dname: $('dialog-name'), dtext: $('dialog-text'),
       dispatch: $('dispatch'),
       banner: $('banner'), crosshair: $('crosshair'),
@@ -210,6 +271,10 @@ const NV_HUD = {
     const hp = Math.max(0, Math.ceil(P.hp));
     e.hpfill.style.width = hp + '%';
     e.hptext.textContent = 'HP ' + hp;
+    // Armour vest: absorbs damage first, blue bar beside HP.
+    const arm = Math.max(0, Math.ceil(P.armour || 0));
+    e.armfill.style.width = arm + '%';
+    e.armtext.textContent = 'ARMOUR ' + arm;
     const w = NV_COMBAT.weaponDef(P);
     e.ammo.textContent = P.inCar ? 'DRIVING' : (P.reloadT > 0 ? 'RELOADING…' : (w.melee ? 'FISTS ∞' : w.name + ' ' + P.ammo + ' / ' + w.mag));
     // Weapon slots: [1] FISTS [2] PISTOL [3] SMG [4] AR-9, current one highlighted.
@@ -236,6 +301,39 @@ const NV_HUD = {
     // Respect + crew, and the district the player is standing in.
     e.respect.textContent = NV_CREW.hudLine(G);
     e.district.textContent = NV_CREW.districtLine(G);
+    // Speedo (bottom right, above the minimap): live km/h, car name,
+    // damage % — only while driving.
+    if (P.inCar && P.car) {
+      e.speedo.classList.remove('hidden');
+      e.speed.textContent = String(Math.round(Math.abs(P.car.speed) * 3.6));
+      e.carname.textContent = NV_ENTITIES.carDisplayName(P.car);
+      const dmg = Math.max(0, Math.round(100 * (1 - (P.car.hp || 0) / (P.car.hpMax || 100))));
+      e.cardmg.textContent = dmg + '% DENTED';
+      e.cardmg.style.color = dmg >= 60 ? '#ff4d6d' : '#ff8fb8';
+    } else {
+      e.speedo.classList.add('hidden');
+    }
+    // Crew-ability panel: each member, key, ability and cooldown.
+    e.crewpanel.innerHTML = Object.keys(NV_CREW.members).map((key) => {
+      const m = NV_CREW.members[key];
+      const a = NV_CREW.abilities[key];
+      const got = NV_CREW.has(G, key);
+      const cd = Math.ceil((G.crewCds || {})[key] || 0);
+      const state = !got ? 'LOCKED' : cd > 0 ? cd + 's' : 'READY';
+      const cls = cd > 0 ? 'crow cd' : 'crow';
+      return '<div class="' + cls + '"><span class="ckey">' + a.key.toUpperCase() + '</span>' +
+        '<span class="cname">' + m.name + '</span> ' + a.name +
+        ' <span class="cdesc">' + a.desc + '</span>' +
+        '<span class="cstate">' + state + '</span></div>';
+    }).join('');
+    // Mission stage chip: "STAGE 3/5 · NEON HEIST" while a job runs.
+    const stageTxt = NV_MISSIONS.stageText(G);
+    if (stageTxt) {
+      e.stage.classList.remove('hidden');
+      e.stage.textContent = stageTxt;
+    } else {
+      e.stage.classList.add('hidden');
+    }
     // Garage prompt near AURA MOTORS.
     e.garagePrompt.classList.toggle('hidden', !(G.screen === 'playing' && !G.garageOpen && NV_GARAGE.nearGarage(G)));
     // Keep-car prompt: driving a stealable street car.
@@ -324,6 +422,17 @@ const NV_HUD = {
       for (const c of rb.cars) dot(c.group.position.x, c.group.position.z, 4, '#4aa8ff');
     }
     if (NV_POLICE.heli) dot(NV_POLICE.heli.group.position.x, NV_POLICE.heli.group.position.z, 5, '#ffd75e');
+    // Kiki's EYES OUT: while it is live, every KPD unit is ringed gold
+    // on the minimap so the player can thread the gaps.
+    if ((G.eyesOutT || 0) > 0) {
+      ctx.strokeStyle = '#ffd75e'; ctx.lineWidth = 2;
+      const ring = (x, z) => { ctx.beginPath(); ctx.arc(sx(x), sy(z), 7, 0, Math.PI * 2); ctx.stroke(); };
+      for (const c of NV_POLICE.cruisers) ring(c.group.position.x, c.group.position.z);
+      for (const rb of NV_POLICE.roadblocks) {
+        for (const c of rb.cars) ring(c.group.position.x, c.group.position.z);
+      }
+      if (NV_POLICE.heli) ring(NV_POLICE.heli.group.position.x, NV_POLICE.heli.group.position.z);
+    }
     // Mission actors: V, guards, courier, rival, payoff truck.
     if (NV_MISSIONS.v) dot(NV_MISSIONS.v.pos.x, NV_MISSIONS.v.pos.z, 4, '#19c3ff');
     for (const gd of NV_MISSIONS.guards) dot(gd.pos.x, gd.pos.z, 3, '#ff5040');

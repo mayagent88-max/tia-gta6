@@ -25,9 +25,11 @@ const NV_POLICE = {
 
   update(G, dt) {
     // Wanted decays after 8 clean seconds: one star per 6 seconds.
-    // Kiki the lookout cools the heat off twice as fast.
+    // Kiki the lookout cools the heat off twice as fast; her EYES OUT
+    // ability triples the shed while it is live.
     if (G.wanted > 0 && G.time - this.lastCrimeT > 8) {
-      this.heat -= dt * 16 * NV_CREW.decayMult(G);
+      const eyeMult = (G.eyesOutT || 0) > 0 ? 3 : 1;
+      this.heat -= dt * 16 * NV_CREW.decayMult(G) * eyeMult;
       if (this.heat <= 0) {
         G.wanted -= 1;
         this.heat = 100;
