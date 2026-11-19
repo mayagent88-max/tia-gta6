@@ -1,12 +1,14 @@
 // A working gta6-01 entry (Node 22, standard library only): the game is this directory's
-// game/ folder, plain static files a desktop browser loads offline (game/index.html and its ES
-// modules, no library and no network request), and the program hands it in. It copies game/ and
+// game/ folder, plain static files a desktop browser loads offline (game/index.html and its
+// plain .js modules, plus the vendored three.js r149 classic script at game/vendor/three.min.js —
+// no CDN, no network request at runtime), and the program hands it in. It copies game/ and
 // screenshots/ from beside this file to /output and writes /output/dossier.json, the summary the
 // judge reads, with the vendored make.fun library. The game in game/ is NEON VELOCITY:
-// AURA CITY, a top-down open-world crime game written for this entry: Jax and V pull three
-// heists across a tropical coastal city — steal the AURA GT prototype, defend V's ATM hack,
-// then a sunset beach-road escape to the Marina — with traffic, pedestrians, a wanted level,
-// police cruisers and a news helicopter, combat, a HUD with a minimap, a start screen and
+// AURA CITY, a full-3D open-world crime game written for this entry (three.js, third-person
+// camera, procedural neon coastal city, custom lightweight physics): Jax and V pull three
+// heists across the city — steal the AURA GT prototype, defend V's ATM hack, then a sunset
+// beach-road escape to the Marina — with traffic, pedestrians, a wanted level, police cruisers
+// and a news helicopter with a searchlight, combat, a HUD with a minimap, a start screen and
 // a localStorage save. Put your 3 or 4 PNG or JPEG screenshots in screenshots/ (the first
 // by name is the cover) and run it.
 //

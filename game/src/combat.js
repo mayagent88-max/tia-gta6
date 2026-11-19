@@ -1,158 +1,164 @@
-// Combat: the player's pistol, enemy fire, bullets and damage. Bullets
-// stop at buildings and wreck cars; hitting people has consequences.
-import { PLAYER } from './config.js';
-import { makeBullet, makeParticle } from './entities.js';
-import { angleTo, dist2 } from './random.js';
-import { hitsBuilding } from './world.js';
-import { addWanted, hurtPlayer } from './police.js';
+// Combat: the player's pistol (raycast from the camera), enemy fire,
+// tracers, impact bursts, screen shake and damage. Cars explode at 0 HP.
+const NV_COMBAT = {
+  tracers: [], parts: [], raycaster: null,
 
-export function playerShoot(G) {
-  const player = G.player;
-  if (player.inCar || player.reloading > 0 || player.fireCooldown > 0) return;
-  if (player.ammo <= 0) {
-    startReload(G);
-    return;
-  }
-  player.ammo -= 1;
-  player.fireCooldown = PLAYER.fireCooldown;
-  player.firing = true;
-  const cam = G.camera;
-  const wx = cam.x + G.input.mouseX;
-  const wy = cam.y + G.input.mouseY;
-  const angle = angleTo(player.x, player.y, wx, wy);
-  player.angle = angle;
-  G.bullets.push(makeBullet(player.x + Math.cos(angle) * 20, player.y + Math.sin(angle) * 20, angle, 'player', PLAYER.bulletDamage));
-  G.particles.push(makeParticle(player.x + Math.cos(angle) * 24, player.y + Math.sin(angle) * 24, '#ffe600', 0.12, Math.cos(angle) * 60, Math.sin(angle) * 60, 5));
-  G.sounds.shoot();
-  G.shake = Math.max(G.shake, 0.08);
-  // Firing in public draws the law, but not on every single shot.
-  if (G.wanted === 0 && G.time - G.lastShootCrime > 4) {
-    G.lastShootCrime = G.time;
-    addWanted(G, 1);
-  }
-}
+  init() { this.raycaster = new THREE.Raycaster(); },
 
-export function startReload(G) {
-  const player = G.player;
-  if (player.reloading > 0 || player.ammo === player.ammoMax) return;
-  player.reloading = PLAYER.reloadSeconds;
-}
-
-export function updateCombat(G, dt) {
-  const player = G.player;
-  if (player.fireCooldown > 0) player.fireCooldown -= dt;
-  if (player.hurtFlash > 0) player.hurtFlash -= dt;
-  if (player.reloading > 0) {
-    player.reloading -= dt;
-    if (player.reloading <= 0) {
-      player.ammo = player.ammoMax;
-      player.reloading = 0;
-    }
-  }
-  // Slow health regen after five quiet seconds.
-  if (player.health > 0 && player.health < PLAYER.health && G.time - player.lastHurtAt > 5) {
-    player.health = Math.min(PLAYER.health, player.health + 6 * dt);
-  }
-
-  for (const bullet of G.bullets) {
-    const step = bullet.speed * dt;
-    bullet.x += Math.cos(bullet.angle) * step;
-    bullet.y += Math.sin(bullet.angle) * step;
-    bullet.travelled += step;
-    if (bullet.travelled > bullet.range) {
-      bullet.dead = true;
-      continue;
-    }
-    if (hitsBuilding(G.world, bullet.x, bullet.y, 2)) {
-      bullet.dead = true;
-      G.particles.push(makeParticle(bullet.x, bullet.y, '#c8ccd4', 0.25, 0, -20, 3));
-      continue;
-    }
-    if (bullet.from === 'player') {
-      if (hitEnemies(G, bullet)) continue;
-      if (hitCars(G, bullet)) continue;
-    } else if (dist2(bullet.x, bullet.y, player.x, player.y) < 16 * 16 && !player.inCar) {
-      bullet.dead = true;
-      hurtPlayer(G, bullet.damage);
-    }
-  }
-  G.bullets = G.bullets.filter((b) => !b.dead);
-
-  // V, the hacker, takes damage from guards during mission 2.
-  if (G.v && G.v.health > 0) {
-    for (const bullet of G.bullets) {
-      if (bullet.from === 'enemy' && dist2(bullet.x, bullet.y, G.v.x, G.v.y) < 16 * 16) {
-        bullet.dead = true;
-        G.v.health -= bullet.damage;
-        G.particles.push(makeParticle(G.v.x, G.v.y, '#ff5c5c', 0.3, 0, -20, 4));
-        if (G.v.health <= 0) {
-          G.v.health = 0;
-          G.missionFailed = 'V went down. The job is blown.';
-        }
+  shoot(G) {
+    const P = G.player;
+    if (P.inCar || P.ammo <= 0 || P.reloadT > 0 || P.shootT > 0) return;
+    P.shootT = NV_CONFIG.player.shootCooldown;
+    P.ammo -= 1;
+    NV_AUDIO.shot();
+    G.shake = Math.min(1, G.shake + 0.12);
+    const cam = G.camera;
+    this.raycaster.setFromCamera({ x: 0, y: 0 }, cam);
+    this.raycaster.far = 140;
+    const targets = [];
+    if (G.world.buildingMesh) targets.push(G.world.buildingMesh);
+    for (const car of G.cars) if (!car.wrecked) targets.push(car.group);
+    for (const o of NV_POLICE.officers) targets.push(o.mesh.group);
+    for (const gd of NV_MISSIONS.guards) targets.push(gd.mesh.group);
+    if (NV_MISSIONS.v) targets.push(NV_MISSIONS.v.mesh.group);
+    const hits = this.raycaster.intersectObjects(targets, true);
+    const from = cam.position.clone();
+    let end = from.clone().add(new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion).multiplyScalar(140));
+    if (hits.length) {
+      const h = hits[0];
+      end = h.point.clone();
+      this.spawnBurst(G, h.point, 0xffd75e, 10, 6);
+      const obj = this.findOwner(h.object);
+      if (obj) {
+        if (obj.kind === 'officer') this.damageOfficer(G, obj.ref, 34);
+        else if (obj.kind === 'guard') this.damageGuard(G, obj.ref, 34);
+        else if (obj.kind === 'car') this.damageCar(G, obj.ref, 18);
       }
     }
-    G.bullets = G.bullets.filter((b) => !b.dead);
-  }
+    this.spawnTracer(G, from, end, 0xfff2c0);
+    G.lastShotPos = { x: P.pos.x, z: P.pos.z };
+    NV_TRAFFIC.scare(P.pos.x, P.pos.z, 45);
+    NV_POLICE.addWanted(G, 0); // shooting keeps the heat fresh
+    G.player.lastShotT = G.time;
+  },
 
-  for (const p of G.particles) {
-    p.life -= dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-  }
-  G.particles = G.particles.filter((p) => p.life > 0);
-}
-
-function hitEnemies(G, bullet) {
-  const targets = [...G.officers, ...G.guards];
-  for (const t of targets) {
-    if (t.health <= 0) continue;
-    if (dist2(bullet.x, bullet.y, t.x, t.y) < 15 * 15) {
-      bullet.dead = true;
-      t.health -= bullet.damage;
-      G.particles.push(makeParticle(bullet.x, bullet.y, '#ff5c5c', 0.3, 0, -20, 4));
-      G.sounds.hit();
-      if (t.health <= 0) {
-        t.health = 0;
-        t.state = 'down';
-        if (t.kind === 'officer') {
-          addWanted(G, 2);
-          G.message = 'You dropped a cop. Every unit in the city is coming.';
-          G.messageTimer = 3;
-        }
-      }
-      return true;
+  findOwner(obj) {
+    let o = obj;
+    while (o) {
+      if (o.userData && o.userData.owner) return o.userData.owner;
+      o = o.parent;
     }
-  }
-  return false;
-}
+    return null;
+  },
 
-function hitCars(G, bullet) {
-  for (const car of G.cars) {
-    if (car.health <= 0) continue;
-    const dx = bullet.x - car.x;
-    const dy = bullet.y - car.y;
-    const along = Math.abs(dx * Math.cos(car.angle) + dy * Math.sin(car.angle));
-    const across = Math.abs(-dx * Math.sin(car.angle) + dy * Math.cos(car.angle));
-    if (along < 26 && across < 15) {
-      bullet.dead = true;
-      car.health -= bullet.damage;
-      G.particles.push(makeParticle(bullet.x, bullet.y, '#ffb13a', 0.3, 0, -20, 4));
-      if (car.health <= 0) {
-        car.health = 0;
-        car.driver = null;
-        car.wreck = true;
-        G.particles.push(makeParticle(car.x, car.y, '#ff7a00', 0.8, 0, -40, 8));
-        G.particles.push(makeParticle(car.x, car.y, '#3a3a3a', 1.4, 0, -60, 10));
-        G.sounds.crash();
-        G.shake = 0.4;
-        if (car === G.player.inCar) {
-          G.player.inCar = null;
-          G.player.x = car.x + 40;
-          G.player.y = car.y + 40;
-        }
-      }
-      return true;
+  damageOfficer(G, o, dmg) {
+    o.hp -= dmg;
+    if (o.hp <= 0) {
+      o.mesh.group.rotation.x = -Math.PI / 2;
+      o.mesh.group.position.y = 0.4;
+      setTimeout(() => G.scene.remove(o.mesh.group), 2000);
+      NV_POLICE.officers.splice(NV_POLICE.officers.indexOf(o), 1);
     }
-  }
-  return false;
-}
+  },
+  damageGuard(G, gd, dmg) {
+    gd.hp -= dmg;
+    if (gd.hp <= 0) {
+      gd.mesh.group.rotation.x = -Math.PI / 2;
+      gd.mesh.group.position.y = 0.4;
+      setTimeout(() => G.scene.remove(gd.mesh.group), 2000);
+      NV_MISSIONS.guards.splice(NV_MISSIONS.guards.indexOf(gd), 1);
+    }
+  },
+  damageCar(G, car, dmg) {
+    car.hp -= dmg;
+    if (car.hp <= 0) this.explodeCar(G, car);
+  },
+
+  explodeCar(G, car) {
+    if (car.wrecked) return;
+    car.wrecked = true;
+    car.speed = 0;
+    this.spawnBurst(G, car.group.position.clone().setY(1.5), 0xff7a2e, 26, 14);
+    this.spawnBurst(G, car.group.position.clone().setY(1.5), 0x333333, 16, 8);
+    NV_AUDIO.explosion();
+    G.shake = 1;
+    car.group.children.forEach((m) => {
+      if (m.material && m.material.color) m.material.color.setHex(0x1a1a1a);
+    });
+    if (G.player.inCar && G.player.car === car) NV_MAIN.wasted(G);
+  },
+
+  enemyShoot(G, fromPos, height, targetPos) {
+    const from = new THREE.Vector3(fromPos.x, height, fromPos.z);
+    const to = new THREE.Vector3(targetPos.x, 1.4, targetPos.z);
+    const dist = from.distanceTo(to);
+    this.spawnTracer(G, from, to, 0xff5040);
+    NV_AUDIO.enemyShot();
+    // Hit chance falls with distance; a hit hurts the player.
+    if (Math.random() < Math.max(0.12, 0.45 - dist * 0.006)) {
+      this.hurtPlayer(G, 7, fromPos);
+    }
+  },
+
+  hurtPlayer(G, dmg, fromPos) {
+    const P = G.player;
+    if (G.screen !== 'playing' || P.hp <= 0) return;
+    P.hp -= dmg;
+    P.lastHurtT = G.time;
+    G.shake = Math.min(1, G.shake + 0.25);
+    if (P.hp <= 0) { P.hp = 0; NV_MAIN.wasted(G); }
+  },
+
+  spawnTracer(G, from, to, color) {
+    const len = from.distanceTo(to);
+    if (len < 0.5) return;
+    const geo = new THREE.BoxGeometry(len, 0.06, 0.06);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.copy(from).add(to).multiplyScalar(0.5);
+    m.lookAt(to);
+    G.scene.add(m);
+    this.tracers.push({ mesh: m, life: 0.09, max: 0.09 });
+  },
+
+  spawnBurst(G, pos, color, n, speed) {
+    for (let i = 0; i < n; i += 1) {
+      const geo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+      const mat = new THREE.MeshBasicMaterial({ color });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.copy(pos);
+      G.scene.add(m);
+      const a = Math.random() * Math.PI * 2;
+      const b = Math.random() * Math.PI - Math.PI / 2;
+      this.parts.push({
+        mesh: m, life: 0.5 + Math.random() * 0.3, max: 0.8,
+        vel: new THREE.Vector3(Math.cos(a) * Math.cos(b), Math.abs(Math.sin(b)) + 0.4, Math.sin(a) * Math.cos(b)).multiplyScalar(speed * (0.5 + Math.random())),
+      });
+    }
+  },
+
+  update(G, dt) {
+    for (let i = this.tracers.length - 1; i >= 0; i -= 1) {
+      const t = this.tracers[i];
+      t.life -= dt;
+      if (t.life <= 0) { G.scene.remove(t.mesh); this.tracers.splice(i, 1); }
+      else t.mesh.material.opacity = t.life / t.max;
+    }
+    for (let i = this.parts.length - 1; i >= 0; i -= 1) {
+      const p = this.parts[i];
+      p.life -= dt;
+      if (p.life <= 0) { G.scene.remove(p.mesh); this.parts.splice(i, 1); continue; }
+      p.vel.y -= 12 * dt;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      if (p.mesh.position.y < 0.1) p.mesh.position.y = 0.1;
+    }
+    // Player health regen after 5 calm seconds.
+    const P = G.player;
+    if (P.hp > 0 && P.hp < 100 && G.time - (P.lastHurtT || -99) > 5) P.hp = Math.min(100, P.hp + 6 * dt);
+    if (P.reloadT > 0) {
+      P.reloadT -= dt;
+      if (P.reloadT <= 0) { P.ammo = NV_CONFIG.player.magSize; }
+    }
+    if (P.shootT > 0) P.shootT -= dt;
+  },
+};

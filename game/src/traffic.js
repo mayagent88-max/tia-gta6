@@ -1,175 +1,114 @@
-// Street life: traffic cars that drive the road grid and pedestrians
-// that walk the sidewalks, plus parked cars to steal. Traffic keeps the
-// city feeling alive even when no mission is running.
-import { CAR_COLORS, ROAD_WIDTH, ROAD_X, ROAD_Y, WORLD } from './config.js';
-import { makeCar, makePed, moveWithBuildings } from './entities.js';
-import { clamp, dist2 } from './random.js';
-import { groundAt } from './world.js';
+// Street life: traffic cars that drive the road grid and pedestrians who
+// walk the sidewalks and flee gunfire. Parked cars wait to be stolen.
+const NV_TRAFFIC = {
+  trafficCars: [], peds: [], parkedCars: [],
+  palette: [0xe8e8e8, 0x2a6fd6, 0xd62a2a, 0x2ad67a, 0xe8c832, 0x7a4ad6, 0xd67a2a, 0x4a4a55],
 
-const TRAFFIC_COUNT = 14;
-const PED_COUNT = 42;
-const PARKED_COUNT = 10;
-
-export function spawnStreetLife(G) {
-  const rng = G.rng;
-  G.cars = [];
-  G.peds = [];
-  // Traffic cars on the road grid, each driving one road line.
-  for (let i = 0; i < TRAFFIC_COUNT; i += 1) {
-    const vertical = rng.chance(0.5);
-    const line = vertical ? rng.pick(ROAD_X) : rng.pick(ROAD_Y);
-    const along = rng.range(120, (vertical ? WORLD.height : WORLD.width) - 240);
-    const dir = rng.chance(0.5) ? 1 : -1;
-    const car = makeCar(rng.chance(0.12) ? 'taxi' : 'sedan', vertical ? line : along, vertical ? along : line, vertical ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : dir > 0 ? 0 : Math.PI, rng.chance(0.12) ? CAR_COLORS.taxi : rng.pick(CAR_COLORS.sedan));
-    car.driver = 'traffic';
-    car.axis = vertical ? 'y' : 'x';
-    car.dir = dir;
-    car.cruise = rng.range(110, 175);
-    car.speed = car.cruise;
-    G.cars.push(car);
-  }
-  // Parked cars along the plaza, the marina and the hideout.
-  for (let i = 0; i < PARKED_COUNT; i += 1) {
-    const spot = G.world.parkingSpots[i % G.world.parkingSpots.length];
-    const car = makeCar('sedan', spot.x + rng.range(-6, 6), spot.y + rng.range(-6, 6), spot.angle, rng.pick(CAR_COLORS.sedan));
-    car.driver = null;
-    G.cars.push(car);
-  }
-  // Pedestrians on the sidewalks.
-  for (let i = 0; i < PED_COUNT; i += 1) {
-    const vertical = rng.chance(0.5);
-    const line = vertical ? rng.pick(ROAD_X) : rng.pick(ROAD_Y);
-    const along = rng.range(120, (vertical ? WORLD.height : WORLD.width) - 240);
-    const offset = (rng.chance(0.5) ? 1 : -1) * (ROAD_WIDTH / 2 + 14);
-    const ped = makePed(vertical ? line + offset : along, vertical ? along : line + offset, rng);
-    G.peds.push(ped);
-  }
-}
-
-// Keep the street populated: respawn traffic that drove off the map.
-function respawnTrafficCar(G, car) {
-  const rng = G.rng;
-  const vertical = rng.chance(0.5);
-  const line = vertical ? rng.pick(ROAD_X) : rng.pick(ROAD_Y);
-  const along = rng.chance(0.5) ? 100 : (vertical ? WORLD.height : WORLD.width) - 260;
-  car.x = vertical ? line : along;
-  car.y = vertical ? along : line;
-  car.axis = vertical ? 'y' : 'x';
-  car.dir = rng.chance(0.5) ? 1 : -1;
-  car.angle = vertical ? (car.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : car.dir > 0 ? 0 : Math.PI;
-  car.speed = car.cruise;
-}
-
-export function updateTraffic(G, dt) {
-  const player = G.player;
-  for (const car of G.cars) {
-    if (car.driver !== 'traffic') continue;
-    // Slow down for the car ahead on the same road.
-    let target = car.cruise;
-    for (const other of G.cars) {
-      if (other === car || other.driver === null) continue;
-      const dx = other.x - car.x;
-      const dy = other.y - car.y;
-      const ahead = car.axis === 'y' ? Math.sign(dy) === car.dir && Math.abs(dx) < 30 : Math.sign(dx) === car.dir && Math.abs(dy) < 30;
-      const gap = car.axis === 'y' ? Math.abs(dy) : Math.abs(dx);
-      if (ahead && gap < 90) target = 0;
+  init(scene, rng, world) {
+    // Traffic cars on the road grid.
+    for (let i = 0; i < NV_CONFIG.traffic.cars; i += 1) {
+      const car = NV_ENTITIES.makeCar(rng.pick(this.palette), 'traffic');
+      const p = rng.pick(world.roadPoints);
+      car.group.position.set(p.x, 0, p.z);
+      car.yaw = rng.pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
+      car.group.rotation.y = car.yaw;
+      car.speed = rng.range(8, 13);
+      car.target = rng.pick(world.roadPoints);
+      scene.add(car.group);
+      this.trafficCars.push(car);
     }
-    car.speed += clamp(target - car.speed, -300 * dt, 200 * dt);
-    const step = car.speed * car.dir * dt;
-    if (car.axis === 'y') car.y += step;
-    else car.x += step;
-    // At an intersection, sometimes turn onto the crossing road.
-    const cross = car.axis === 'y' ? ROAD_Y : ROAD_X;
-    const along = car.axis === 'y' ? car.y : car.x;
-    for (const line of cross) {
-      if (Math.abs(along - line) < 6 && G.rng.chance(0.25)) {
-        const otherLine = car.axis === 'y' ? ROAD_X : ROAD_Y;
-        const current = car.axis === 'y' ? car.x : car.y;
-        if (Math.abs(current - line) > 200) break;
-        car.axis = car.axis === 'y' ? 'x' : 'y';
-        car.dir = G.rng.chance(0.5) ? 1 : -1;
-        car.angle = car.axis === 'y' ? (car.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : car.dir > 0 ? 0 : Math.PI;
-        if (car.axis === 'y') car.x = line;
-        else car.y = line;
-        void otherLine;
-        break;
+    // Parked cars along roadsides.
+    for (let i = 0; i < NV_CONFIG.traffic.parked; i += 1) {
+      const car = NV_ENTITIES.makeCar(rng.pick(this.palette), 'parked');
+      const p = rng.pick(world.roadPoints);
+      const along = rng.chance(0.5);
+      car.group.position.set(p.x + (along ? rng.range(-40, 40) : 13), 0, p.z + (along ? 13 : rng.range(-40, 40)));
+      car.yaw = along ? 0 : Math.PI / 2;
+      car.group.rotation.y = car.yaw;
+      scene.add(car.group);
+      this.parkedCars.push(car);
+    }
+    // Pedestrians on the sidewalks.
+    for (let i = 0; i < NV_CONFIG.traffic.peds; i += 1) {
+      const person = NV_ENTITIES.makePerson(rng.pick([0xd62a6f, 0x2a6fd6, 0xe8c832, 0x7a4ad6, 0x2ad67a]), 0x2a2a33);
+      const p = rng.pick(world.roadPoints);
+      person.group.position.set(p.x + rng.range(-30, 30), 0, p.z + rng.range(-30, 30));
+      scene.add(person.group);
+      this.peds.push({
+        mesh: person, pos: person.group.position, yaw: rng.range(0, Math.PI * 2),
+        speed: rng.range(1.8, 3.2), target: null, fleeT: 0, phase: rng.range(0, 6),
+      });
+    }
+  },
+
+  update(G, dt) {
+    const world = G.world;
+    const playerPos = G.player.inCar ? G.player.car.group.position : G.player.pos;
+    // Traffic: drive toward the current intersection, pick a new one on arrival.
+    for (const car of this.trafficCars) {
+      if (car.wrecked) continue;
+      const dx = car.target.x - car.group.position.x;
+      const dz = car.target.z - car.group.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 6) { car.target = G.rng.pick(world.roadPoints); continue; }
+      // Slow down for a car directly ahead.
+      let slow = false;
+      for (const o of G.cars) {
+        if (o === car || o.wrecked) continue;
+        const ox = o.group.position.x - car.group.position.x;
+        const oz = o.group.position.z - car.group.position.z;
+        const od = Math.hypot(ox, oz);
+        if (od < 14) {
+          const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
+          if ((ox * fx + oz * fz) / od > 0.6) { slow = true; break; }
+        }
+      }
+      const top = slow ? 2 : 12;
+      NV_ENTITIES.driveToward(car, car.target.x, car.target.z, dt, top, world.colliders, G.cars);
+      // Recycle far-away traffic near the player so streets stay alive.
+      const pd = Math.hypot(car.group.position.x - playerPos.x, car.group.position.z - playerPos.z);
+      if (pd > 550) {
+        const p = G.rng.pick(world.roadPoints);
+        car.group.position.set(p.x, 0, p.z);
+        car.target = G.rng.pick(world.roadPoints);
       }
     }
-    if (car.x < 60 || car.x > WORLD.width - 60 || car.y < 60 || car.y > WORLD.height - 60) {
-      respawnTrafficCar(G, car);
-    }
-  }
-
-  for (const ped of G.peds) {
-    if (ped.state === 'down') {
-      ped.stateTimer -= dt;
-      continue;
-    }
-    if (ped.state === 'flee') {
-      // Run away from the last gunfire, then calm down.
-      ped.panic -= dt;
-      const dx = Math.cos(ped.angle) * 150 * dt;
-      const dy = Math.sin(ped.angle) * 150 * dt;
-      const pos = moveWithBuildings(G.world, ped.x, ped.y, dx, dy, ped.radius);
-      ped.x = pos.x;
-      ped.y = pos.y;
-      if (ped.panic <= 0) ped.state = 'walk';
-      continue;
-    }
-    ped.stateTimer -= dt;
-    if (ped.stateTimer <= 0) {
-      ped.stateTimer = G.rng.range(2, 7);
-      ped.angle = G.rng.range(0, Math.PI * 2);
-    }
-    const dx = Math.cos(ped.angle) * ped.speed * dt;
-    const dy = Math.sin(ped.angle) * ped.speed * dt;
-    const ground = groundAt(ped.x + dx, ped.y + dy);
-    if (ground === 'ocean') {
-      ped.angle += Math.PI;
-      continue;
-    }
-    const pos = moveWithBuildings(G.world, ped.x, ped.y, dx, dy, ped.radius);
-    ped.x = pos.x;
-    ped.y = pos.y;
-    // A pedestrian hit by a speeding car goes down and the law notices.
-    const car = carHittingPed(G, ped);
-    if (car && Math.abs(car.speed) > 60) {
-      ped.state = 'down';
-      ped.stateTimer = 6;
-      G.particles.push({ x: ped.x, y: ped.y, color: '#ff5c5c', life: 0.6, maxLife: 0.6, vx: 0, vy: -30, size: 5 });
-      if (car.driver === 'player') {
-        addWantedSafe(G, 1);
-        G.message = 'You hit a pedestrian! The police are coming.';
-        G.messageTimer = 3;
+    // Pedestrians: stroll to random nearby points, flee gunfire.
+    for (const ped of this.peds) {
+      if (ped.fleeT > 0) ped.fleeT -= dt;
+      if (!ped.target || Math.hypot(ped.target.x - ped.pos.x, ped.target.z - ped.pos.z) < 3) {
+        const p = G.rng.pick(world.roadPoints);
+        ped.target = { x: p.x + G.rng.range(-40, 40), z: p.z + G.rng.range(-40, 40) };
       }
+      let tx = ped.target.x, tz = ped.target.z;
+      let spd = ped.speed;
+      if (ped.fleeT > 0) {
+        tx = ped.pos.x + (ped.pos.x - G.lastShotPos.x);
+        tz = ped.pos.z + (ped.pos.z - G.lastShotPos.z);
+        spd = 7;
+      }
+      const dx = tx - ped.pos.x, dz = tz - ped.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.5) {
+        const wantYaw = Math.atan2(-dz, dx);
+        let dy = wantYaw - ped.yaw;
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        ped.yaw += Math.max(-3 * dt, Math.min(3 * dt, dy));
+        const step = spd * dt;
+        const nx = ped.pos.x + Math.cos(ped.yaw) * step;
+        const nz = ped.pos.z - Math.sin(ped.yaw) * step;
+        if (!NV_PHYSICS.hitsAny(nx, nz, 0.6, world.colliders)) { ped.pos.x = nx; ped.pos.z = nz; }
+        NV_PHYSICS.clampWorld(ped.pos, 6);
+      }
+      NV_ENTITIES.walkPerson(ped.mesh, ped.pos, ped.yaw, spd, dt);
     }
-    // Gunfire nearby sends pedestrians running.
-    if (player.firing && dist2(ped.x, ped.y, player.x, player.y) < 420 * 420) {
-      ped.state = 'flee';
-      ped.panic = 2.5;
-      ped.angle = Math.atan2(ped.y - player.y, ped.x - player.x);
-    }
-  }
-  // Downed pedestrians get back up after a while.
-  for (const ped of G.peds) {
-    if (ped.state === 'down' && ped.stateTimer <= 0) {
-      ped.state = 'walk';
-      ped.stateTimer = G.rng.range(2, 6);
-    }
-  }
-}
+  },
 
-function carHittingPed(G, ped) {
-  for (const car of G.cars) {
-    if (Math.abs(car.speed) < 1) continue;
-    const dx = ped.x - car.x;
-    const dy = ped.y - car.y;
-    const along = Math.abs(dx * Math.cos(car.angle) + dy * Math.sin(car.angle));
-    const across = Math.abs(-dx * Math.sin(car.angle) + dy * Math.cos(car.angle));
-    if (along < 26 && across < 16) return car;
-  }
-  return null;
-}
-
-// Local import to avoid a cycle: police.js owns the wanted level.
-import { addWanted as addWantedSafe } from './police.js';
+  // Gunfire nearby makes pedestrians run.
+  scare(x, z, radius) {
+    for (const ped of this.peds) {
+      if (Math.hypot(ped.pos.x - x, ped.pos.z - z) < radius) ped.fleeT = 3;
+    }
+  },
+};

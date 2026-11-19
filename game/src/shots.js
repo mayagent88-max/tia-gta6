@@ -1,140 +1,76 @@
-// Screenshot scenes behind ?shot=cover|chase|city|mission. Each one sets
-// the real game to a fixed, seeded state and steps it forward, so the
-// frame is what a short game really looks like and the same seed always
-// gives the same frame. No scene is faked: the HUD, the minimap, the
-// traffic and the police are all the live game.
-import { LANDMARKS } from './config.js';
-import { makeCar, makeGuard } from './entities.js';
-import { addWanted } from './police.js';
-import { startMission } from './missions.js';
-import { spawnStreetLife, updateTraffic } from './traffic.js';
+// Screenshot scenes behind ?shot=cover|chase|city|mission. Each one stages
+// the live game (real state, real HUD) and raises window.__shotReady once
+// the frame has settled. Debug hooks live on window.NV / window.__game.
+const NV_SHOTS = {
+  params() { return new URLSearchParams(window.location.search); },
 
-const STEP = 1 / 60;
-
-function resetForShot(G) {
-  G.cars = [];
-  G.peds = [];
-  G.officers = [];
-  G.guards = [];
-  G.bullets = [];
-  G.particles = [];
-  G.heli = null;
-  G.v = null;
-  G.mission = null;
-  G.missionFailed = null;
-  G.wanted = 0;
-  G.wantedTimer = 0;
-  G.spawnCooldown = 0;
-  G.ramCooldown = 0;
-  G.bustedTimer = 0;
-  G.dialog = null;
-  G.banner = null;
-  G.message = null;
-  G.messageTimer = 0;
-  G.sunset = false;
-  G.player.health = 100;
-  G.player.ammo = 12;
-  G.player.inCar = null;
-  spawnStreetLife(G);
-}
-
-function stepWorld(G, seconds) {
-  const steps = Math.round(seconds / STEP);
-  for (let i = 0; i < steps; i += 1) {
-    G.time += STEP;
-    updateTraffic(G, STEP);
-  }
-}
-
-// The cover: the title screen over the sunset city, the hero car on the
-// beach road with the palms and the ocean behind it.
-function stageCover(G) {
-  resetForShot(G);
-  G.sunset = true;
-  const car = makeCar('sports', 1500, 2208, 0, '#ff2e88');
-  car.prototype = true;
-  car.driver = null;
-  G.cars.push(car);
-  G.player.x = 1560;
-  G.player.y = 2160;
-  G.player.angle = Math.PI / 2;
-  G.camera.x = 1500 - 640;
-  G.camera.y = 2208 - 480;
-  stepWorld(G, 4);
-  return 'title';
-}
-
-// A two-star chase: the player in the AURA GT, two cruisers closing in,
-// the wanted stars and the minimap on screen.
-function stageChase(G) {
-  resetForShot(G);
-  const car = makeCar('sports', 1400, 1000, 0, '#ff2e88');
-  car.prototype = true;
-  car.driver = 'player';
-  car.speed = 420;
-  G.cars.push(car);
-  G.player.inCar = car;
-  G.player.x = car.x;
-  G.player.y = car.y;
-  const cop1 = makeCar('police', 1180, 1000, 0, '#e8e8e8');
-  cop1.driver = 'police';
-  cop1.speed = 380;
-  G.cars.push(cop1);
-  const cop2 = makeCar('police', 1260, 1064, 0, '#e8e8e8');
-  cop2.driver = 'police';
-  cop2.speed = 360;
-  G.cars.push(cop2);
-  addWanted(G, 2);
-  G.camera.x = car.x - 640;
-  G.camera.y = car.y - 360;
-  stepWorld(G, 1.5);
-  return 'play';
-}
-
-// The living city: traffic on the avenues, pedestrians on the sidewalks,
-// palms and neon roofs, the player on foot in the plaza.
-function stageCity(G) {
-  resetForShot(G);
-  G.player.x = 1600;
-  G.player.y = 900;
-  G.player.angle = Math.PI / 2;
-  G.camera.x = 1600 - 640;
-  G.camera.y = 900 - 360;
-  stepWorld(G, 8);
-  return 'play';
-}
-
-// Mission 2 in progress: V hacking the Central ATM while security
-// closes in, the objective and the minimap route on screen.
-function stageMission(G) {
-  resetForShot(G);
-  startMission(G, 1);
-  G.player.x = LANDMARKS.atm.x + 10;
-  G.player.y = LANDMARKS.atm.y + 130;
-  G.player.angle = -Math.PI / 2;
-  // Skip the walk: put V at the ATM and the hack half done.
-  G.mission.phase = 'defend';
-  G.mission.hackTimer = 45;
-  G.mission.wave = 1;
-  G.mission.waveTimer = 18;
-  G.v = { x: LANDMARKS.atm.x + 30, y: LANDMARKS.atm.y + 10, health: 100, angle: 0, kind: 'v' };
-  for (let i = 0; i < 3; i += 1) {
-    const angle = (i / 3) * Math.PI * 2 + 0.5;
-    G.guards.push(makeGuard(LANDMARKS.atm.x + Math.cos(angle) * 300, LANDMARKS.atm.y + Math.sin(angle) * 300));
-  }
-  addWanted(G, 1);
-  G.message = 'Defend V — security is coming!';
-  G.messageTimer = 3;
-  G.camera.x = LANDMARKS.atm.x - 640;
-  G.camera.y = LANDMARKS.atm.y - 360;
-  stepWorld(G, 2);
-  return 'play';
-}
-
-// Set `G` to the named scene and return the screen to draw over it.
-export function stageShot(name, G) {
-  if (name === 'chase') return stageChase(G);
-  if (name === 'city') return stageCity(G);
-  if (name === 'mission') return stageMission(G);
-  return stageCover(G);
-}
+  maybeStage(G) {
+    const shot = this.params().get('shot');
+    if (!shot) return false;
+    NV_MAIN.startGame(G);
+    const L = G.world.locations;
+    const setCam = (x, y, z, lx, ly, lz) => {
+      G.shotCam = { pos: new THREE.Vector3(x, y, z), look: new THREE.Vector3(lx, ly, lz) };
+    };
+    if (shot === 'cover') {
+      // M1 escape on the beach road at sunset: hero car posed close to the
+      // camera, two cruisers tight behind it, city skyline behind.
+      G.world.setSunset(true);
+      const proto = NV_ENTITIES.makeCar(0xff2e88, 'prototype');
+      proto.group.position.set(0, 0, 745);
+      proto.yaw = -0.3;
+      proto.group.rotation.y = -0.3;
+      proto.glow.material.opacity = 0.55;
+      G.scene.add(proto.group);
+      G.cars.push(proto);
+      NV_MAIN.enterCar(G, proto);
+      proto.speed = 0;
+      NV_POLICE.addWanted(G, 2);
+      const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      c1.group.position.set(-14, 0, 752); c1.yaw = -0.3; c1.group.rotation.y = -0.3;
+      const c2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      c2.group.position.set(-18, 0, 738); c2.yaw = -0.3; c2.group.rotation.y = -0.3;
+      [c1, c2].forEach((c) => { G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c); });
+      NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
+      setCam(14, 3.8, 758, -4, 1.5, 742);
+    } else if (shot === 'chase') {
+      // Chase posed in profile on a city avenue: the pink prototype with
+      // two cruisers tight behind it, streetlights and towers behind.
+      const proto = NV_ENTITIES.makeCar(0xff2e88, 'prototype');
+      proto.group.position.set(-100, 0, 0);
+      proto.yaw = 0;
+      proto.glow.material.opacity = 0.55;
+      G.scene.add(proto.group);
+      G.cars.push(proto);
+      NV_MAIN.enterCar(G, proto);
+      proto.speed = 0;
+      NV_POLICE.addWanted(G, 2);
+      G.player.camYaw = 0;
+      const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      c1.group.position.set(-113, 0, 5); c1.yaw = 0; c1.group.rotation.y = 0;
+      const c2 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
+      c2.group.position.set(-117, 0, -5); c2.yaw = 0; c2.group.rotation.y = 0;
+      [c1, c2].forEach((c) => { G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c); });
+      NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
+      setCam(-76, 5, 20, -108, 1.5, 0);
+    } else if (shot === 'city') {
+      // Cinematic high view over the city toward the beach at sunset.
+      G.world.setSunset(true);
+      NV_HUD.setObjective(G, 'Press M to start the first mission.');
+      setCam(100, 170, 520, -40, 0, -150);
+    } else if (shot === 'mission') {
+      // M2 hack in progress: V at the ATM, guards closing in.
+      NV_MISSIONS.startMission(G, 1);
+      const P = G.player;
+      P.pos.set(106, 0, -94);
+      P.yaw = Math.PI * 0.75;
+      P.camYaw = P.yaw;
+      NV_MISSIONS.tryInteract(G);
+      if (NV_MISSIONS.guards.length === 0) NV_MISSIONS.spawnGuards(G, 2);
+      if (G.mission) G.mission.timer = 62;
+      setCam(124, 7, -76, 100, 2, -100);
+    }
+    setTimeout(() => { window.__shotReady = true; }, 2200);
+    return true;
+  },
+};

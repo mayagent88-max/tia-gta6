@@ -1,235 +1,187 @@
 // The story: three jobs for Jax and V, each a small state machine with
-// phases, objectives, guards and rewards. Missions are started with M
-// and progress is saved, so the story continues across visits.
-import { LANDMARKS, MISSIONS } from './config.js';
-import { makeCar, makeGuard } from './entities.js';
-import { dist2 } from './random.js';
-import { addWanted, clearWanted, fireAt } from './police.js';
-import { writeSave } from './save.js';
+// phases, a beacon, objectives and dialog. Completing a job pays cash and
+// saves; failing one sends Jax back to the start of that job.
+const NV_MISSIONS = {
+  guards: [], v: null,
 
-export function startMission(G, index) {
-  if (G.mission || index >= MISSIONS.length) return false;
-  const def = MISSIONS[index];
-  G.mission = {
-    index,
-    def,
-    phase: 'start',
-    phaseTimer: 0,
-    hackTimer: 90,
-    wave: 0,
-    waveTimer: 0,
-    banner: null,
-  };
-  G.sounds.missionStart();
-  G.dialog = { title: def.title, lines: [def.brief], timer: 6 };
-  if (index === 0) {
-    // The prototype waits in the Neon Plaza Garage.
-    const car = makeCar('sports', LANDMARKS.garage.x, LANDMARKS.garage.y, -Math.PI / 2, '#ff2e88');
-    car.driver = null;
-    car.prototype = true;
-    G.cars.push(car);
-    G.prototypeCar = car;
-    G.mission.phase = 'goto-garage';
-  } else if (index === 1) {
-    G.mission.phase = 'goto-atm';
-  } else if (index === 2) {
-    const car = makeCar('sports', LANDMARKS.hideout.x + 60, LANDMARKS.hideout.y, 0, '#00e5ff');
-    car.driver = null;
-    car.getaway = true;
-    G.cars.push(car);
-    G.getawayCar = car;
-    G.mission.phase = 'get-car';
-  }
-  return true;
-}
+  startMission(G, idx) {
+    const def = NV_CONFIG.missions[idx];
+    if (!def) return false;
+    const L = G.world.locations;
+    const target = def.id === 'm1' ? L.garage : def.id === 'm2' ? L.atm : L.beachRoad;
+    G.mission = { def, phase: 'go', timer: 0, target };
+    G.world.setBeacon(target.x, target.z, 0xff2e88);
+    NV_HUD.banner(G, 'MISSION ' + (idx + 1) + ' — ' + def.name);
+    NV_HUD.dialog(G, 'V: ' + def.brief, 6);
+    NV_HUD.setObjective(G, def.brief);
+    NV_AUDIO.pickup();
+    return true;
+  },
 
-export function missionObjective(G) {
-  const m = G.mission;
-  if (!m) {
-    return G.missionsDone < 3
-      ? `Press M to start ${MISSIONS[G.missionsDone].title}`
-      : 'All jobs done — Aura City is yours. Free roam!';
-  }
-  if (m.index === 0) {
-    if (m.phase === 'goto-garage') return 'Steal the AURA GT prototype — Neon Plaza Garage';
-    if (m.phase === 'escape') return 'Lose the heat! Bring the AURA GT to the Hideout';
-  }
-  if (m.index === 1) {
-    if (m.phase === 'goto-atm') return 'Get to the Central ATM so V can start the hack';
-    if (m.phase === 'defend') return `Protect V while she hacks — ${Math.ceil(m.hackTimer)}s left`;
-  }
-  if (m.index === 2) {
-    if (m.phase === 'get-car') return 'Get in the getaway car at the Hideout';
-    if (m.phase === 'drive') return 'Drive the beach road to the Marina boat — do not stop!';
-  }
-  return m.def.title;
-}
-
-export function missionMarker(G) {
-  const m = G.mission;
-  if (!m) {
-    if (G.missionsDone < 3) {
-      const next = G.missionsDone;
-      if (next === 0) return { x: LANDMARKS.garage.x, y: LANDMARKS.garage.y };
-      if (next === 1) return { x: LANDMARKS.atm.x, y: LANDMARKS.atm.y };
-      return { x: LANDMARKS.hideout.x, y: LANDMARKS.hideout.y };
-    }
-    return null;
-  }
-  if (m.index === 0) {
-    if (m.phase === 'goto-garage') return { x: LANDMARKS.garage.x, y: LANDMARKS.garage.y };
-    return { x: LANDMARKS.hideout.x, y: LANDMARKS.hideout.y };
-  }
-  if (m.index === 1) return { x: LANDMARKS.atm.x, y: LANDMARKS.atm.y };
-  if (m.index === 2) {
-    if (m.phase === 'get-car') return { x: LANDMARKS.hideout.x, y: LANDMARKS.hideout.y };
-    return { x: LANDMARKS.marina.x, y: LANDMARKS.marina.y };
-  }
-  return null;
-}
-
-function completeMission(G) {
-  const m = G.mission;
-  const reward = m.def.reward;
-  G.cash += reward;
-  G.missionsDone = Math.max(G.missionsDone, m.index + 1);
-  G.save.bestCash = Math.max(G.save.bestCash, G.cash);
-  G.save.cash = G.cash;
-  G.save.missionsDone = G.missionsDone;
-  writeSave(G.save);
-  G.banner = { title: 'MISSION COMPLETE', sub: `+$${reward.toLocaleString('en-US')} — ${m.def.title}`, timer: 3.5 };
-  G.sounds.missionComplete();
-  clearWanted(G);
-  G.guards = [];
-  G.v = null;
-  G.sunset = false;
-  const doneIndex = m.index;
-  G.mission = null;
-  if (doneIndex === 2) {
-    G.screen = 'ending';
-    G.sounds.setEngine(false, 0);
-    G.sounds.setSiren(false);
-  }
-}
-
-function failMission(G, reason) {
-  G.missionFailed = reason;
-  G.banner = { title: 'MISSION FAILED', sub: reason, timer: 3.5 };
-  G.sounds.missionFail();
-  G.guards = [];
-  G.v = null;
-  G.sunset = false;
-  G.mission = null;
-  G.player.health = 100;
-}
-
-export function updateMission(G, dt) {
-  const m = G.mission;
-  if (!m) return;
-  const player = G.player;
-  const px = player.inCar ? player.inCar.x : player.x;
-  const py = player.inCar ? player.inCar.y : player.y;
-
-  if (m.index === 0) {
-    if (m.phase === 'escape') {
-      const d = Math.sqrt(dist2(px, py, LANDMARKS.hideout.x, LANDMARKS.hideout.y));
-      if (player.inCar === G.prototypeCar && d < 140) {
-        completeMission(G);
-        return;
+  // E key: context action for the current mission phase.
+  tryInteract(G) {
+    const M = G.mission;
+    if (!M) return false;
+    const P = G.player;
+    const pp = P.inCar ? P.car.group.position : P.pos;
+    if (M.def.id === 'm1' && M.phase === 'go') {
+      const L = G.world.locations.garage;
+      if (Math.hypot(pp.x - L.x, pp.z - L.z) < 12 && !P.inCar) {
+        // The prototype is parked in the garage yard.
+        const proto = NV_ENTITIES.makeCar(0xff2e88, 'prototype');
+        proto.group.position.set(L.x + 30, 0, L.z);
+        proto.yaw = Math.PI / 2;
+        proto.group.rotation.y = proto.yaw;
+        proto.group.userData.owner = { kind: 'car', ref: proto };
+        G.scene.add(proto.group);
+        G.cars.push(proto);
+        NV_MAIN.enterCar(G, proto);
+        M.phase = 'escape';
+        M.proto = proto;
+        NV_POLICE.addWanted(G, 2);
+        const H = G.world.locations.hideout;
+        G.world.setBeacon(H.x, H.z, 0x39d353);
+        NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
+        NV_HUD.dialog(G, 'V: Nice ride. Two stars already — get to the Hideout, fast!', 5);
+        return true;
       }
     }
-  }
-
-  if (m.index === 1) {
-    if (m.phase === 'goto-atm') {
-      const d = Math.sqrt(dist2(px, py, LANDMARKS.atm.x, LANDMARKS.atm.y));
-      if (d < 120) {
-        m.phase = 'defend';
-        m.hackTimer = 90;
-        m.wave = 0;
-        m.waveTimer = 0;
-        G.v = { x: LANDMARKS.atm.x + 30, y: LANDMARKS.atm.y + 10, health: 100, angle: 0, kind: 'v' };
-        G.dialog = { title: 'V IS IN', lines: ['V: "Ninety seconds. Keep the street clear and do not let them touch me."'], timer: 5 };
-        G.message = 'Defend V — security is coming!';
-        G.messageTimer = 3;
+    if (M.def.id === 'm2' && M.phase === 'go') {
+      const L = G.world.locations.atm;
+      if (Math.hypot(pp.x - L.x, pp.z - L.z) < 10 && !P.inCar) {
+        M.phase = 'hack';
+        M.timer = 90;
+        M.waves = [60, 30, 10];
+        const v = NV_ENTITIES.makePerson(0x19c3ff, 0x222233);
+        v.group.position.set(L.x + 4, 0, L.z);
+        G.scene.add(v.group);
+        this.v = { mesh: v, pos: v.group.position, hp: 100 };
+        G.world.setBeacon(L.x, L.z, 0x19c3ff);
+        NV_HUD.setObjective(G, 'Protect V — hack in progress. 90 seconds.');
+        NV_HUD.dialog(G, 'V: I\'m in. Keep the SEC guards off me!', 5);
+        return true;
       }
-    } else if (m.phase === 'defend') {
-      m.hackTimer -= dt;
-      // Waves of security guards close in on the ATM.
-      m.waveTimer -= dt;
-      const waveSize = [2, 3, 4][m.wave] || 0;
-      if (m.wave < 3 && m.waveTimer <= 0) {
-        m.wave += 1;
-        m.waveTimer = 30;
-        for (let i = 0; i < waveSize; i += 1) {
-          const angle = G.rng.range(0, Math.PI * 2);
-          const guard = makeGuard(LANDMARKS.atm.x + Math.cos(angle) * 420, LANDMARKS.atm.y + Math.sin(angle) * 420);
-          G.guards.push(guard);
+    }
+    return false;
+  },
+
+  update(G, dt) {
+    const M = G.mission;
+    if (!M) return;
+    const P = G.player;
+    const pp = P.inCar ? P.car.group.position : P.pos;
+    if (M.def.id === 'm1') {
+      if (M.phase === 'escape') {
+        if (M.proto && M.proto.wrecked) { this.fail(G, 'The AURA GT is wrecked.'); return; }
+        const H = G.world.locations.hideout;
+        if (P.inCar && Math.hypot(pp.x - H.x, pp.z - H.z) < 13) this.complete(G);
+      }
+    } else if (M.def.id === 'm2') {
+      if (M.phase === 'hack') {
+        M.timer -= dt;
+        NV_HUD.setObjective(G, 'Protect V — hack in progress. ' + Math.ceil(Math.max(0, M.timer)) + 's left. V HP ' + Math.max(0, Math.ceil(this.v ? this.v.hp : 0)));
+        // Security waves at 60s, 30s and 10s remaining.
+        if (M.waves.length && M.timer <= M.waves[0]) {
+          M.waves.shift();
+          this.spawnGuards(G, 2);
+          NV_HUD.dialog(G, 'V: More SEC guards incoming!', 3);
         }
-        G.message = `Security wave ${m.wave} incoming!`;
-        G.messageTimer = 2.5;
-      }
-      // Guards hunt V, and shoot the player when close.
-      for (const guard of G.guards) {
-        if (guard.health <= 0) continue;
-        const target = G.v && G.v.health > 0 ? G.v : player;
-        const tx = target.inCar ? target.inCar.x : target.x;
-        const ty = target.inCar ? target.inCar.y : target.y;
-        const d = Math.sqrt(dist2(guard.x, guard.y, tx, ty));
-        guard.angle = Math.atan2(ty - guard.y, tx - guard.x);
-        if (d > 300) {
-          guard.x += Math.cos(guard.angle) * guard.speed * dt;
-          guard.y += Math.sin(guard.angle) * guard.speed * dt;
-        } else {
-          guard.fireCooldown -= dt;
-          if (guard.fireCooldown <= 0) {
-            guard.fireCooldown = 1.6;
-            fireAt(G, guard.x, guard.y, tx, ty, 'enemy', 6);
+        // Guards chase V and shoot her.
+        for (let i = this.guards.length - 1; i >= 0; i -= 1) {
+          const gd = this.guards[i];
+          if (gd.hp <= 0) continue;
+          const vx = this.v.pos.x - gd.pos.x, vz = this.v.pos.z - gd.pos.z;
+          const d = Math.hypot(vx, vz);
+          const wantYaw = Math.atan2(-vz, vx);
+          let dy = wantYaw - gd.yaw;
+          while (dy > Math.PI) dy -= Math.PI * 2;
+          while (dy < -Math.PI) dy += Math.PI * 2;
+          gd.yaw += Math.max(-3.5 * dt, Math.min(3.5 * dt, dy));
+          const spd = d > 14 ? 7 : 2.5;
+          const nx = gd.pos.x + Math.cos(gd.yaw) * spd * dt;
+          const nz = gd.pos.z - Math.sin(gd.yaw) * spd * dt;
+          if (!NV_PHYSICS.hitsAny(nx, nz, 0.7, G.world.colliders)) { gd.pos.x = nx; gd.pos.z = nz; }
+          NV_ENTITIES.walkPerson(gd.mesh, gd.pos, gd.yaw, spd, dt);
+          gd.shootT -= dt;
+          if (d < 32 && gd.shootT <= 0) {
+            gd.shootT = 1.5;
+            const from = new THREE.Vector3(gd.pos.x, 1.6, gd.pos.z);
+            const to = new THREE.Vector3(this.v.pos.x, 1.4, this.v.pos.z);
+            NV_COMBAT.spawnTracer(G, from, to, 0xff5040);
+            NV_AUDIO.enemyShot();
+            if (Math.random() < 0.4) {
+              this.v.hp -= 6;
+              NV_COMBAT.spawnBurst(G, to, 0xff5040, 4, 4);
+            }
           }
         }
+        if (this.v && this.v.hp <= 0) {
+          NV_HUD.dialog(G, 'V: I\'m hit — pull me out!', 4);
+          this.fail(G, 'V went down during the hack.');
+          return;
+        }
+        if (M.timer <= 0) this.complete(G);
       }
-      G.guards = G.guards.filter((g) => g.health > 0);
-      if (G.missionFailed) {
-        failMission(G, G.missionFailed);
-        G.missionFailed = null;
-        return;
-      }
-      if (m.hackTimer <= 0) {
-        completeMission(G);
-        return;
+    } else if (M.def.id === 'm3') {
+      if (M.phase === 'go' && P.inCar) {
+        M.phase = 'drive';
+        G.world.setSunset(true);
+        NV_POLICE.addWanted(G, 3);
+        const B = G.world.locations.marina;
+        G.world.setBeacon(B.x, B.z, 0xffd75e);
+        NV_HUD.setObjective(G, 'Sunset escape — reach the Marina boat!');
+        NV_HUD.dialog(G, 'V: The heli is on us. Don\'t stop for anything!', 5);
+      } else if (M.phase === 'drive') {
+        const B = G.world.locations.marina;
+        if (P.inCar && Math.hypot(pp.x - B.x, pp.z - B.z) < 16) this.complete(G);
       }
     }
-  }
+  },
 
-  if (m.index === 2) {
-    if (m.phase === 'drive') {
-      const d = Math.sqrt(dist2(px, py, LANDMARKS.marina.x, LANDMARKS.marina.y));
-      if (player.inCar === G.getawayCar && d < 170) {
-        completeMission(G);
-        return;
-      }
+  spawnGuards(G, n) {
+    const L = G.world.locations.atm;
+    for (let i = 0; i < n; i += 1) {
+      const person = NV_ENTITIES.makePerson(0x222228, 0x181820);
+      const a = G.rng.range(0, Math.PI * 2);
+      person.group.position.set(L.x + Math.cos(a) * 45, 0, L.z + Math.sin(a) * 45);
+      person.group.userData.owner = { kind: 'guard', ref: null };
+      G.scene.add(person.group);
+      const gd = { mesh: person, pos: person.group.position, yaw: 0, hp: 50, shootT: 1, phase: 0 };
+      person.group.userData.owner.ref = gd;
+      this.guards.push(gd);
     }
-  }
-}
+  },
 
-// Called from the enter-car action: stealing the prototype or taking the
-// getaway car advances the mission it belongs to.
-export function onEnterCar(G, car) {
-  const m = G.mission;
-  if (!m) return;
-  if (m.index === 0 && m.phase === 'goto-garage' && car.prototype) {
-    m.phase = 'escape';
-    addWanted(G, 2);
-    G.dialog = { title: 'ALARM!', lines: ['V: "You tripped the garage alarm. Lose them and get to the Hideout!"'], timer: 5 };
-    G.message = 'The AURA GT is yours — now lose the heat!';
-    G.messageTimer = 3;
-    G.sounds.pickup();
-  }
-  if (m.index === 2 && m.phase === 'get-car' && car.getaway) {
-    m.phase = 'drive';
-    G.sunset = true;
-    addWanted(G, 3);
-    G.dialog = { title: 'GOLDEN HOUR', lines: ['V: "Sunset run. Beach road, all the way to the boat. Do not stop."'], timer: 5 };
-    G.sounds.pickup();
-  }
-}
+  complete(G) {
+    const M = G.mission;
+    G.cash += M.def.reward;
+    G.missionsDone += 1;
+    NV_SAVE.save(G);
+    NV_AUDIO.jingle();
+    NV_HUD.banner(G, 'MISSION COMPLETE  +$' + M.def.reward);
+    NV_HUD.dialog(G, 'V: That\'s one down. The Syndicate won\'t know what hit them.', 5);
+    this.clearField(G);
+    const doneId = M.def.id;
+    G.mission = null;
+    G.world.hideBeacon();
+    if (doneId === 'm3') { NV_MAIN.ending(G); return; }
+    NV_HUD.setObjective(G, G.missionsDone < 3 ? 'Press M for the next mission.' : 'All jobs done — free roam Aura City.');
+  },
+
+  fail(G, reason) {
+    NV_HUD.banner(G, 'JOB FAILED');
+    NV_HUD.dialog(G, reason + ' Try again — press M to restart the job.', 6);
+    this.clearField(G);
+    const idx = NV_CONFIG.missions.indexOf(G.mission.def);
+    G.mission = null;
+    G.world.hideBeacon();
+    // Restart the same job at its start point.
+    this.startMission(G, idx);
+  },
+
+  clearField(G) {
+    for (const gd of this.guards) G.scene.remove(gd.mesh.group);
+    this.guards = [];
+    if (this.v) { G.scene.remove(this.v.mesh.group); this.v = null; }
+  },
+};
