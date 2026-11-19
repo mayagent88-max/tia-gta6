@@ -26,11 +26,21 @@ const NV_MISSIONS = {
     return { n: i >= 0 ? i + 1 : 1, total };
   },
 
-  // "STAGE 3/5 · NEON HEIST" — the chip the HUD shows while a job runs.
+  // The current stage's in-story name ("WRECK THE REGENT" style), from
+  // the mission def's stageNames list, falling back to the mission name
+  // when a staged shot builds a fake def without one.
+  stageName(G) {
+    const s = this.stageOf(G);
+    if (!s || !G.mission) return '';
+    const names = G.mission.def.stageNames || [];
+    return names[s.n - 1] || G.mission.def.name;
+  },
+
+  // "STAGE 3/5 · WRECK THE REGENT" — the chip the HUD shows while a job runs.
   stageText(G) {
     const s = this.stageOf(G);
     if (!s || !G.mission) return '';
-    return 'STAGE ' + s.n + '/' + s.total + ' · ' + G.mission.def.name;
+    return 'STAGE ' + s.n + '/' + s.total + ' · ' + this.stageName(G);
   },
 
   startMission(G, idx) {

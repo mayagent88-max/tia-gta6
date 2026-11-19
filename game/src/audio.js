@@ -107,27 +107,43 @@ const NV_AUDIO = {
 
   // --- Radio: three WebAudio synth stations, cycled with R. A 16-step
   // sequencer plays a quiet bass + lead pattern per station; the main loop
-  // calls updateRadio(dt) every frame.
+  // calls updateRadio(dt) every frame. Each station has its own playlist
+  // (r1 style: "OMBO 98.4 — Island Pop"); the song turns over every
+  // ~40 seconds of play.
   radio: {
-    station: 0, step: 0, nextT: 0,
+    station: 0, step: 0, nextT: 0, songIdx: 0, songStart: 0, songLen: 40,
     stations: [
-      { name: 'NEON FM', bpm: 112, wave: 'sawtooth', bass: [55, 0, 55, 0, 65.4, 0, 55, 0, 49, 0, 55, 0, 73.4, 0, 65.4, 0], lead: [220, 0, 0, 261.6, 0, 0, 329.6, 0, 0, 0, 392, 0, 329.6, 0, 261.6, 0] },
-      { name: 'VICE 88', bpm: 100, wave: 'square', bass: [82.4, 0, 98, 0, 82.4, 0, 110, 0, 82.4, 0, 98, 0, 123.5, 0, 98, 0], lead: [0, 0, 164.8, 0, 0, 196, 0, 0, 0, 0, 164.8, 0, 0, 246.9, 0, 0] },
-      { name: 'STATIC 99', bpm: 84, wave: 'triangle', bass: [65.4, 0, 0, 0, 98, 0, 0, 0, 82.4, 0, 0, 0, 110, 0, 98, 0], lead: [130.8, 0, 164.8, 0, 196, 0, 164.8, 0, 130.8, 0, 196, 0, 246.9, 0, 220, 0] },
+      { name: 'NEON FM', bpm: 112, wave: 'sawtooth', songs: ['Midnight Drive', 'Chrome Sunset', 'Palm Static', 'Neon Rain'], bass: [55, 0, 55, 0, 65.4, 0, 55, 0, 49, 0, 55, 0, 73.4, 0, 65.4, 0], lead: [220, 0, 0, 261.6, 0, 0, 329.6, 0, 0, 0, 392, 0, 329.6, 0, 261.6, 0] },
+      { name: 'VICE 88', bpm: 100, wave: 'square', songs: ['Vice City Lights', 'Gold Chain', 'Turbo Heart', 'Night Pursuit'], bass: [82.4, 0, 98, 0, 82.4, 0, 110, 0, 82.4, 0, 98, 0, 123.5, 0, 98, 0], lead: [0, 0, 164.8, 0, 0, 196, 0, 0, 0, 0, 164.8, 0, 0, 246.9, 0, 0] },
+      { name: 'STATIC 99', bpm: 84, wave: 'triangle', songs: ['Island Pop', 'Beach Static', 'Low Tide', 'Salt Air'], bass: [65.4, 0, 0, 0, 98, 0, 0, 0, 82.4, 0, 0, 0, 110, 0, 98, 0], lead: [130.8, 0, 164.8, 0, 196, 0, 164.8, 0, 130.8, 0, 196, 0, 246.9, 0, 220, 0] },
     ],
   },
   radioName() { return this.radio.stations[this.radio.station].name; },
+  currentSong() {
+    const st = this.radio.stations[this.radio.station];
+    return st.songs[this.radio.songIdx % st.songs.length];
+  },
+  radioLine() { return this.radioName() + ' — ' + this.currentSong(); },
   cycleRadio() {
     this.radio.station = (this.radio.station + 1) % this.radio.stations.length;
     this.radio.step = 0;
     this.radio.nextT = 0;
+    this.radio.songIdx = 0;
+    this.radio.songStart = 0;
     return this.radioName();
   },
   updateRadio() {
     if (!this.ctx || this.muted || this.ctx.state !== 'running') return;
     const st = this.radio.stations[this.radio.station];
-    const stepDur = 60 / st.bpm / 4;
     const now = this.ctx.currentTime;
+    // Turn the song over after songLen seconds of play (init the clock
+    // on the first running tick so a suspended context never skips).
+    if (!this.radio.songStart) { this.radio.songStart = now; }
+    else if (now - this.radio.songStart > this.radio.songLen) {
+      this.radio.songIdx = (this.radio.songIdx + 1) % st.songs.length;
+      this.radio.songStart = now;
+    }
+    const stepDur = 60 / st.bpm / 4;
     if (this.radio.nextT < now - 0.2) this.radio.nextT = now + 0.05;
     let guard = 0;
     while (this.radio.nextT < now + 0.12 && guard < 8) {

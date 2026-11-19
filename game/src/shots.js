@@ -64,9 +64,10 @@ const NV_SHOTS = {
         G.scene.add(c.group); G.cars.push(c); NV_POLICE.cruisers.push(c);
       });
       // Heli overhead + a roadblock ahead on the beach road. The heli
-      // flies low (orbitH) so it reads in frame from the chase camera.
+      // flies low and close (orbitH 12, orbitR 28) so it reads big in
+      // frame from the chase camera, searchlight on the road.
       const heli = NV_ENTITIES.makeHeli(G.scene);
-      heli.callsign = 'AIR-1'; heli.role = 'AIR UNIT'; heli.angle = 4.4; heli.orbitH = 14; heli.orbitR = 35; heli.orbitHold = true;
+      heli.callsign = 'AIR-1'; heli.role = 'AIR UNIT'; heli.angle = 4.4; heli.orbitH = 12; heli.orbitR = 28; heli.orbitHold = true;
       NV_POLICE.heli = heli;
       const rb1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       rb1.group.position.set(-58, 0, 726); rb1.yaw = Math.PI / 2; rb1.group.rotation.y = rb1.yaw;
@@ -82,14 +83,20 @@ const NV_SHOTS = {
       this.stageCrowd(G, [
         [-46, 724, 0], [-32, 738, 0], [28, 722, Math.PI], [44, 738, Math.PI],
         [-70, 730, 0], [60, 730, Math.PI],
+        // Foreground traffic in the lower frame, either side of the hero
+        // car, so the bottom half of the cover is street, not bare asphalt.
+        [-24, 750, 0], [26, 749, Math.PI],
       ], [
         [-52, 694], [-38, 696], [-20, 693], [8, 695], [24, 694], [38, 696], [52, 693], [-8, 697],
         [-64, 700], [70, 700],
+        [-28, 749], [30, 750], [-16, 750], [22, 749],
       ]);
+      // Planters along the beach road by the camera, filling the near corners.
+      G.world.addPlanter(-30, 748); G.world.addPlanter(34, 747); G.world.addBench(-36, 744, Math.PI / 2);
       // The cover frame shows the new HUD: armour bar, crew panel,
-      // stage chip (m1, stage 2/2) and the speedo on the AURA GT.
+      // stage chip (m1, stage 2/2 · LOSE THE HEAT) and the speedo on the AURA GT.
       G.player.armour = 55;
-      G.mission = { def: { id: 'm1', name: 'FAST BREAK', stages: ['go', 'escape'] }, phase: 'escape', target: { x: -900, z: 500 } };
+      G.mission = { def: { id: 'm1', name: 'FAST BREAK', stages: ['go', 'escape'], stageNames: ['STEAL THE PROTOTYPE', 'LOSE THE HEAT'] }, phase: 'escape', target: { x: -900, z: 500 } };
       G.world.setBeacon(-900, 500, 0x39d353); // Hideout: the objective, so the minimap marker points there
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
       setCam(10, 2.6, 752, -6, 1.2, 741);
@@ -145,9 +152,9 @@ const NV_SHOTS = {
       // Fill the near-side grass between the camera and the avenue.
       G.world.addPlanter(-95, 20); G.world.addPlanter(-115, 22); G.world.addBench(-70, 18, Math.PI / 2);
       // The chase frame shows the new HUD too: armour, crew panel,
-      // stage chip (m3, stage 2/2) and the speedo on the AURA GT.
+      // stage chip (m3, stage 2/2 · SUNSET RUN) and the speedo on the AURA GT.
       G.player.armour = 72;
-      G.mission = { def: { id: 'm3', name: 'GOLDEN HOUR SCORE', stages: ['go', 'drive'] }, phase: 'drive', target: { x: -900, z: 500 } };
+      G.mission = { def: { id: 'm3', name: 'GOLDEN HOUR SCORE', stages: ['go', 'drive'], stageNames: ['GET A CAR', 'SUNSET RUN'] }, phase: 'drive', target: { x: -900, z: 500 } };
       G.world.setBeacon(-900, 500, 0x39d353);
       NV_HUD.setObjective(G, 'Lose the heat! Bring the AURA GT to the Hideout.');
       setCam(-84, 4, 14, -108, 1.5, 0);

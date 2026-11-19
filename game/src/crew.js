@@ -37,6 +37,18 @@ const NV_CREW = {
     };
   },
 
+  // Per-member rank letter (r1 style: "FIXER rank B"): D when the member
+  // joins, then a letter every 25 respect above their unlock threshold —
+  // V can reach S by the finale, Kiki tops out at C.
+  rankLetter(G, key) {
+    const m = this.members[key];
+    if (!m) return '';
+    const letters = ['D', 'C', 'B', 'A', 'S'];
+    const respect = (G.crew && G.crew.respect) || 0;
+    const idx = Math.max(0, Math.min(4, Math.floor((respect - m.at) / 25)));
+    return letters[idx];
+  },
+
   rankName(respect) {
     let name = 'NOBODY';
     for (const r of this.ranks) if (respect >= r.min) name = r.name;

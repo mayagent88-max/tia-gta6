@@ -297,7 +297,7 @@ const NV_HUD = {
     const u = G.upgrades || { engine: 0, armor: 0, nitro: 0 };
     const cur = G.player.inCar && G.player.car && G.player.car.owned ? G.player.car.owned.upgrades : u;
     e.upgrades.textContent = 'ENG ' + cur.engine + ' · ARM ' + cur.armor + ' · NITRO ' + cur.nitro;
-    e.radio.textContent = '♪ ' + NV_AUDIO.radioName();
+    e.radio.textContent = '♪ ' + NV_AUDIO.radioLine();
     // Respect + crew, and the district the player is standing in.
     e.respect.textContent = NV_CREW.hudLine(G);
     e.district.textContent = NV_CREW.districtLine(G);
@@ -316,7 +316,7 @@ const NV_HUD = {
     } else {
       e.speedo.classList.add('hidden');
     }
-    // Crew-ability panel: each member, key, ability and cooldown.
+    // Crew-ability panel: each member, key, ability, rank letter and cooldown.
     e.crewpanel.innerHTML = Object.keys(NV_CREW.members).map((key) => {
       const m = NV_CREW.members[key];
       const a = NV_CREW.abilities[key];
@@ -324,8 +324,9 @@ const NV_HUD = {
       const cd = Math.ceil((G.crewCds || {})[key] || 0);
       const state = !got ? 'LOCKED' : cd > 0 ? cd + 's' : 'READY';
       const cls = cd > 0 ? 'crow cd' : 'crow';
+      const rank = got ? ' · RANK ' + NV_CREW.rankLetter(G, key) : '';
       return '<div class="' + cls + '"><span class="ckey">' + a.key.toUpperCase() + '</span>' +
-        '<span class="cname">' + m.name + '</span> ' + a.name +
+        '<span class="cname">' + m.name + ' · ' + m.role + rank + '</span> ' + a.name +
         ' <span class="cdesc">' + a.desc + '</span>' +
         '<span class="cstate">' + state + '</span></div>';
     }).join('');

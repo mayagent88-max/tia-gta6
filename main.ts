@@ -21,8 +21,10 @@
 // the plaza and beach road, combat, a HUD with a live minimap (bright roads,
 // buildings, police, mission marker), an armour vest that absorbs damage first
 // (blue bar beside HP, refilled at the garage or from vest pickups), a live
-// speedo with the car name and damage %, a mission stage counter (STAGE 2/4)
-// on the HUD, textured ground (sidewalk tiles, crosswalks, plaza checker,
+// speedo with the car name and damage %, a mission stage counter (STAGE 2/4 · LOSE THE HEAT)
+// on the HUD, every stage named in-story, crew rank letters (V — HACKER · RANK B) on the
+// crew-ability panel, and a radio song line per station (NEON FM — Midnight Drive) with a
+// rotating playlist, textured ground (sidewalk tiles, crosswalks, plaza checker,
 // beach towels), a start screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
 // in screenshots/ (the first by name is the cover) and run it.
 //
