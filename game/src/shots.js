@@ -49,6 +49,10 @@ const NV_SHOTS = {
       G.cars.push(proto);
       NV_MAIN.enterCar(G, proto);
       proto.speed = 0;
+      // Posed as a chase: the speedo reads 108 km/h and the car 62%
+      // dented (like r1's 111 km/h frame) while the car stays in pose.
+      proto.speedDisplay = 30;
+      proto.hp = 38;
       NV_POLICE.addWanted(G, 3);
       const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');
       c1.group.position.set(-14, 0, 752); c1.yaw = -0.3; c1.group.rotation.y = -0.3;
@@ -101,6 +105,10 @@ const NV_SHOTS = {
       G.cars.push(proto);
       NV_MAIN.enterCar(G, proto);
       proto.speed = 0;
+      // Posed as a chase: the speedo reads 108 km/h and the car 62%
+      // dented (like r1's 111 km/h frame) while the car stays in pose.
+      proto.speedDisplay = 30;
+      proto.hp = 38;
       NV_POLICE.addWanted(G, 3);
       G.player.camYaw = 0;
       const c1 = NV_ENTITIES.makeCar(0xf2f2f2, 'police');

@@ -305,7 +305,10 @@ const NV_HUD = {
     // damage % — only while driving.
     if (P.inCar && P.car) {
       e.speedo.classList.remove('hidden');
-      e.speed.textContent = String(Math.round(Math.abs(P.car.speed) * 3.6));
+      // The speedo reads the car's speed — or speedDisplay, the posed
+      // value the screenshot staging sets so a parked pose can read as
+      // a chase (108 km/h) without the car driving out of frame.
+      e.speed.textContent = String(Math.round(Math.abs(P.car.speedDisplay ?? P.car.speed) * 3.6));
       e.carname.textContent = NV_ENTITIES.carDisplayName(P.car);
       const dmg = Math.max(0, Math.round(100 * (1 - (P.car.hp || 0) / (P.car.hpMax || 100))));
       e.cardmg.textContent = dmg + '% DENTED';
