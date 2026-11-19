@@ -179,6 +179,19 @@ const NV_POLICE = {
         h.rotor.rotation.y += dt * 22;
         h.light.target.position.set(playerPos.x - hx, -58, playerPos.z - hz);
         h.light.target.updateMatrixWorld();
+        // Searchlight cone + ground spot: the cone spans the heli belly
+        // down to the ground and the spot sits on the ground below it,
+        // so the searchlight reads in a still frame, not just in motion.
+        if (h.cone) {
+          const r = Math.max(2.5, hy * 0.18);
+          h.cone.scale.set(r, hy, r);
+          h.cone.position.y = -hy / 2;
+        }
+        if (h.spot) {
+          const sr = Math.max(2.5, hy * 0.15);
+          h.spot.scale.set(sr, sr, 1);
+          h.spot.position.y = -hy;
+        }
       }
     }
   },

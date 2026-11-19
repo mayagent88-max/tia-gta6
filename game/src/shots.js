@@ -93,6 +93,14 @@ const NV_SHOTS = {
       ]);
       // Planters along the beach road by the camera, filling the near corners.
       G.world.addPlanter(-30, 748); G.world.addPlanter(34, 747); G.world.addBench(-36, 744, Math.PI / 2);
+      // Bottom-centre foreground: a parked car right in front of the
+      // camera, so the lower middle of the cover is street, not a bare
+      // stretch of asphalt. Static (not in the traffic lists) so it holds
+      // its pose for the shot; it sits off the sight line to the hero, so
+      // it never blocks the AURA GT.
+      const fg = NV_ENTITIES.makeCar(0x3aa7ff, 'parked');
+      fg.group.position.set(2, 0, 750); fg.yaw = -0.3; fg.group.rotation.y = -0.3;
+      G.scene.add(fg.group); G.cars.push(fg);
       // The cover frame shows the new HUD: armour bar, crew panel,
       // stage chip (m1, stage 2/2 · LOSE THE HEAT) and the speedo on the AURA GT.
       G.player.armour = 55;

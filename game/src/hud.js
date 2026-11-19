@@ -37,7 +37,8 @@ const NV_HUD = {
     ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.fillRect(30, 46, 4, 18);
-    // Neck + face, with a shaded cheek.
+    // Neck + face, with a shaded cheek, a forehead highlight from the
+    // top-left light, a jaw shadow and a neck shadow.
     ctx.fillStyle = p.skin;
     ctx.fillRect(28, 38, 8, 8);
     ctx.beginPath();
@@ -47,6 +48,16 @@ const NV_HUD = {
     ctx.beginPath();
     ctx.ellipse(40, 28, 6, 10, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(27, 17, 6, 4, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(32, 39, 7, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(28, 38, 8, 3);
     // Hair, drawn per character.
     ctx.fillStyle = p.hair;
     if (key === 'mira') {
@@ -67,21 +78,40 @@ const NV_HUD = {
       ctx.closePath();
       ctx.fill();
     }
-    // Eyes: white, dark iris, eyebrow above each.
+    // Hair strands + a light streak so the hair reads as hair, not a cap,
+    // and a rim light on the head's top-left edge.
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    for (const sx of [24, 30, 36]) {
+      ctx.beginPath(); ctx.moveTo(sx, 10); ctx.quadraticCurveTo(sx + 1, 14, sx, 17); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.moveTo(24, 9); ctx.quadraticCurveTo(30, 8, 38, 10); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(32, 26, 13.5, Math.PI, Math.PI * 1.5); ctx.stroke();
+    // Eyes: white, coloured iris, dark pupil, catchlight, eyebrow above each.
+    const iris = key === 'v' ? '#19c3ff' : key === 'lio' ? '#6b4a2a' : key === 'mira' ? '#7a4fd0' : key === 'kiki' ? '#2fae4e' : '#3a3a4a';
     for (const ex of [26, 38]) {
       ctx.fillStyle = '#fff';
       ctx.beginPath(); ctx.ellipse(ex, 24, 3.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = iris;
+      ctx.beginPath(); ctx.arc(ex, 24, 2.1, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#111';
-      ctx.beginPath(); ctx.arc(ex, 24, 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, 24, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(ex + 0.7, 23.2, 0.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#222';
       ctx.fillRect(ex - 3, 18.5, 6, 1);
     }
-    // Nose + mouth.
+    // Nose + two-tone lips (darker upper, lighter lower).
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(32, 27); ctx.lineTo(31, 31); ctx.stroke();
-    ctx.fillStyle = '#7a3a3a';
-    ctx.fillRect(28, 35, 8, 2);
+    ctx.fillStyle = '#8a3a3a';
+    ctx.fillRect(28, 35, 8, 1);
+    ctx.fillStyle = '#b06a6a';
+    ctx.fillRect(28, 36, 8, 1);
     // Per-character accessory.
     if (key === 'v') {
       ctx.strokeStyle = '#19c3ff'; ctx.lineWidth = 2;

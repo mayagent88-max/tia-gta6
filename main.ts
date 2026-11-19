@@ -25,7 +25,10 @@
 // on the HUD, every stage named in-story, crew rank letters (V — HACKER · RANK B) on the
 // crew-ability panel, and a radio song line per station (NEON FM — Midnight Drive) with a
 // rotating playlist, textured ground (sidewalk tiles, crosswalks, plaza checker,
-// beach towels), a start screen and a localStorage save. Put your 3 or 4 PNG or JPEG screenshots
+// beach towels), a start screen and a localStorage save. Art polish: the news helicopter is a
+// dark-navy police bird with skids, tail fin and a visible searchlight cone + ground pool; dialog
+// portraits are shaded canvas faces with coloured irises and catchlights; the cover/chase/mission
+// frames are staged with foreground street life so no frame is bare asphalt. Put your 3 or 4 PNG or JPEG screenshots
 // in screenshots/ (the first by name is the cover) and run it.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.

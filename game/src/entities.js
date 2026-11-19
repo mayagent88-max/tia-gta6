@@ -101,27 +101,72 @@ const NV_ENTITIES = {
   },
 
   // News helicopter: body, tail, spinning rotor and a searchlight.
+  // Police helicopter: dark navy body with a white stripe (reads against
+  // the purple sunset sky instead of a white box), tail fin + tail rotor,
+  // landing skids, and a visible searchlight cone + ground spot so the
+  // searchlight reads in a still frame. The cone/spot are children of the
+  // group, scaled to the heli's altitude each frame by NV_POLICE; their
+  // creation defaults match a 26-unit hover (the mission shot's pose), so
+  // staged shots that never run the police loop still show them.
   makeHeli(scene) {
     const group = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.4, metalness: 0.3 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x22345e, roughness: 0.4, metalness: 0.3 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.7, 2.2), bodyMat);
     group.add(body);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.4, 2.25), new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 }));
+    stripe.position.set(0, 0.1, 0);
+    group.add(stripe);
     const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.7, 0.7), bodyMat);
     tail.position.set(-4.4, 0.3, 0);
     group.add(tail);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.8, 1.4), bodyMat);
+    fin.position.set(-6.6, 0.9, 0);
+    group.add(fin);
+    const tailRotor = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+    tailRotor.position.set(-6.6, 0.5, 0.45);
+    group.add(tailRotor);
     const glass = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1.9), new THREE.MeshStandardMaterial({ color: 0x0a2a3a, roughness: 0.2, metalness: 0.6 }));
     glass.position.set(2.2, 0.2, 0);
     group.add(glass);
     const rotor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.08, 0.9), new THREE.MeshStandardMaterial({ color: 0x222222 }));
     rotor.position.y = 1.1;
     group.add(rotor);
+    // Landing skids: two rails + four struts.
+    const skidMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 });
+    for (const sz of [-1.0, 1.0]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 0.12), skidMat);
+      rail.position.set(0, -1.25, sz);
+      group.add(rail);
+      for (const sx of [-1.2, 1.2]) {
+        const strut = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), skidMat);
+        strut.position.set(sx, -0.95, sz);
+        group.add(strut);
+      }
+    }
     const light = new THREE.SpotLight(0xfff2c0, 2.5, 220, 0.35, 0.5, 1.2);
     light.position.set(0, -0.8, 0);
     group.add(light);
     light.target.position.set(0, -60, 0);
     group.add(light.target);
+    // Visible searchlight cone (apex at the belly, base on the ground)
+    // + the bright pool where it lands. Unit cone scaled per frame.
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(1, 1, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xfff2c0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })
+    );
+    cone.scale.set(4, 26, 4);
+    cone.position.y = -13;
+    group.add(cone);
+    const spot = new THREE.Mesh(
+      new THREE.CircleGeometry(1, 24),
+      new THREE.MeshBasicMaterial({ color: 0xfff2c0, transparent: true, opacity: 0.38, depthWrite: false })
+    );
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.y = -26;
+    spot.scale.set(3.5, 3.5, 1);
+    group.add(spot);
     scene.add(group);
-    return { group, rotor, light, yaw: 0, angle: 0 };
+    return { group, rotor, light, cone, spot, yaw: 0, angle: 0 };
   },
 
   // Arcade driving: accel/brake/steer with drift, 2 sub-steps, wall and

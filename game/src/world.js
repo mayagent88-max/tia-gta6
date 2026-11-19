@@ -134,6 +134,15 @@ const NV_WORLD = {
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, 0, 0);
     scene.add(ground);
+    // Zebra crosswalk across the x=0 avenue where it meets the beach
+    // road (z 747-751): flat white bars that break up the asphalt in the
+    // cover frame's foreground instead of a bare stretch of road.
+    const crossMat = new THREE.MeshBasicMaterial({ color: 0xe8e8e8 });
+    for (const cz of [747, 749, 751]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(8, 0.06, 1.2), crossMat);
+      bar.position.set(0, 0.06, cz);
+      scene.add(bar);
+    }
 
     // --- Ocean: animated wave texture on a plane south of the beach.
     const oc = document.createElement('canvas'); oc.width = 512; oc.height = 256;
