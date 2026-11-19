@@ -5,6 +5,7 @@
 // Final-build note (re-record, 2026-11-19): the v2 save also holds crew ability
 // unlocks and rank letters, so a reloaded run keeps the whole progression layer
 // — respect, standing, owned cars, garage upgrades — intact.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_SAVE = {
   key: 'nv-aura-city-save-v2',
   load() {

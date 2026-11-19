@@ -5,6 +5,7 @@
 // Final-build note (re-record, 2026-11-19): the two sub-steps per frame are what
 // keep fast cars from tunneling through walls at 100+ km/h on the speedo — the
 // collision layer the chase and escape jobs depend on.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_PHYSICS = {
   // Move a circle (pos is a THREE.Vector3, y is kept) by dx/dz, resolving
   // against the collider list. Returns true if anything blocked the move.

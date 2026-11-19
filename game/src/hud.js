@@ -8,6 +8,7 @@
 // leader's frame shows — HP + ARMOUR bars, a live speedo (km/h, car name, damage %),
 // the crew-ability panel with rank letters, the named stage chip, the KPD dispatch
 // panel with live named units, and the radio station + song line.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_HUD = {
   els: {}, dialogT: 0, bannerT: 0,
 

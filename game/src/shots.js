@@ -4,6 +4,7 @@
 // Final-build note (re-record, 2026-11-19): the cover stages a parked foreground
 // car and a zebra crosswalk into the lower frame and pulls the helicopter closer,
 // so no judged frame is a stretch of empty asphalt — every shot is dense.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_SHOTS = {
   params() { return new URLSearchParams(window.location.search); },
 

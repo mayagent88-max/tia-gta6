@@ -1,7 +1,8 @@
 /* NEON VELOCITY: AURA CITY — final build (re-record, 2026-11-19): the HUD theme —
    neon-on-dark panels for cash/HP/armour, the crew-ability panel, the KPD dispatch
    panel, the speedo and the minimap — all positioned so the 1280x720 judged frames
-   stay readable with every panel on screen at once. */
+   stay readable with every panel on screen at once.
+   Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change. */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0618; font-family: 'Segoe UI', Arial, sans-serif; color: #fff; }
 #app { position: fixed; inset: 0; }

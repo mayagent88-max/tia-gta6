@@ -5,6 +5,7 @@
 // Final-build note (re-record, 2026-11-19): the loop now carries the full final
 // build — ten jobs, armour, crew abilities, dispatch, radio songs — and the
 // verified chain still holds: cash $68,775 and respect 250 through all ten jobs.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_MAIN = {
   // Garage tuning applies to the car Jax drives: an owned car carries its
   // own upgrades; a stolen street car runs stock. Mira's crew bonus adds

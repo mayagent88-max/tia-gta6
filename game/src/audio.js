@@ -3,6 +3,7 @@
 // (NEON FM, VICE 88, STATIC 99) with four named songs each, rotating every ~40s,
 // so the HUD can show station + song like a real car radio; sirens and engine hum
 // are synthesized too — the whole soundscape is generated, still no audio files.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_AUDIO = {
   ctx: null, master: null, muted: false, siren: null, engine: null,
   ensure() {

@@ -6,6 +6,7 @@
 // Final-build note (re-record, 2026-11-19): four weapons put the entry at parity
 // with the rank-1 leader — FISTS (melee, infinite), PISTOL 12, SMG 32, AR-9 30 —
 // on keys 1-4 and the hold-Tab wheel, with raycast shots, tracers and shake.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_COMBAT = {
   tracers: [], parts: [], raycaster: null,
   wheelOpen: false, wheelSel: 'pistol',

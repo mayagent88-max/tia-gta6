@@ -4,6 +4,7 @@
 // Final-build note (re-record, 2026-11-19): the ground is textured now — sidewalk
 // tile grids, zebra crosswalks at every intersection, plaza checker, road edge
 // lines, grass and beach speckle — so the city overview reads as a city.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_WORLD = {
   colliders: [], buildings: [], roadPoints: [], armourPickups: [],
   locations: {}, beacon: null, oceanTex: null, sunMesh: null,

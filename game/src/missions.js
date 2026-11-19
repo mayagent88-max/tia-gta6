@@ -8,6 +8,7 @@
 // sub-objective now (STAGE 2/4 · DRAIN THE ATM, STAGE 5/5 · VANISH AT FOUR STARS),
 // shown in the stage chip and banner — the leader's named-stage presentation,
 // matched on all ten jobs.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_MISSIONS = {
   guards: [], v: null, courier: null, rival: null, truck: null,
   gold: null, boss: null,

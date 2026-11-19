@@ -2,6 +2,7 @@
 // Final-build note (re-record, 2026-11-19): this is the single input surface for
 // every system the later rounds added — 1-4 weapons, Tab wheel, K keep-car, R radio,
 // G garage, M mission, Z/X/C/B crew abilities — all read from here by the loop.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_INPUT = {
   keys: {}, pressed: {}, mouseDX: 0, mouseDY: 0, clicked: false, mouseDown: false,
   pointerLocked: false,

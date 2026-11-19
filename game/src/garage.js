@@ -7,6 +7,7 @@
 // Final-build note (re-record, 2026-11-19): the garage also refills armour — the
 // ARMOR buy tops armour to 100 — and two glowing vest pickups (garage yard, Hideout)
 // respawn every 30s, so armour is earned in the world as well as bought.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_GARAGE = {
   rows: [
     { key: 'engine', label: 'ENGINE', desc: '+8% top speed / level' },

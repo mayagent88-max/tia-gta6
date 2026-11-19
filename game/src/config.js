@@ -4,6 +4,7 @@
 // system, the garage and the crew progression need lives here — one place to tune
 // the whole game, which is what let the last rounds close the gap on the leader
 // without touching the systems themselves.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_CONFIG = {
   world: {
     sizeX: 2400, sizeZ: 1800, // city ground plane, centred on 0,0

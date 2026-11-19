@@ -7,6 +7,7 @@
 // just passive — V SWAP PLATES, Lio QUICK FIX, Mira NITRO SURGE, Kiki EYES OUT on
 // Z/X/C/B with cooldowns — and each member carries a rank letter (D up to S) that
 // rises with respect, matching the leader's crew panel feature for feature.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 const NV_CREW = {
   // Respect ranks: 25 respect per finished job, so Lio joins after the
   // third job, Mira after the sixth, Kiki after the ninth.

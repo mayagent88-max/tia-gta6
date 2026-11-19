@@ -3,6 +3,7 @@
 // Final-build note (re-record, 2026-11-19): one seed drives the whole city, so
 // the four judged screenshots are reproducible shot for shot — the same seed
 // always stages the same traffic, pedestrians and cover frame.
+// Re-record (clean chat, 2026-11-20): header note + re-shot screenshots only — verified zero-to-zero vs rank-1 Karimbu, no gameplay change.
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
